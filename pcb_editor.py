@@ -1,12 +1,14 @@
 import os
 from PyQt5.QtWidgets import (QMainWindow, QAction, QTextEdit, QStatusBar, QMessageBox, QFileDialog,
                              QDialog, QVBoxLayout, QLabel, QLineEdit, QHBoxLayout, QPushButton)
+from kompas_service import KompasService
 
 
 class PCBEditor(QMainWindow):
     def __init__(self):
         super().__init__()
         self.initUI()
+        self.ks_service = KompasService()
 
     def initUI(self):
         self.setWindowTitle('Редактор печатных плат')
@@ -128,7 +130,7 @@ class PCBEditor(QMainWindow):
                 frw_path = os.path.join(project_path, project_name + ".frw")
                 pcbprj_path = os.path.join(project_path, project_name + ".pcbprj")
 
-                with open(frw_path, 'w'): pass
+                self.ks_service.create_fragment(frw_path)
                 with open(pcbprj_path, 'w'): pass
 
                 self.statusBar.showMessage(f"Создан проект: {project_path}")
