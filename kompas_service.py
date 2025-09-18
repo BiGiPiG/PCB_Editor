@@ -26,7 +26,7 @@ class KompasService:
     def create_fragment(self, path):
         """Метод для создания фрагмента"""
         try:
-            new_doc = self.kompas.Documents.Add(1)  # 1 = фрагмент
+            new_doc = self.kompas.Documents.Add(2)  # 1 = фрагмент
 
             if not path.lower().endswith('.frw'):
                 path += '.frw'

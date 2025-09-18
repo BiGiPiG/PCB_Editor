@@ -125,10 +125,25 @@ class PCBEditor(QMainWindow):
 
             project_path = os.path.join(project_folder, project_name)
 
+            if not os.path.exists(project_path):
+                QMessageBox.warning(dlg, "Ошибка", f"Папка '{project_folder}' не существует!")
+                return
+
             try:
                 os.makedirs(project_path, exist_ok=True)
                 frw_path = os.path.join(project_path, project_name + ".frw")
                 pcbprj_path = os.path.join(project_path, project_name + ".pcbprj")
+
+                if os.path.exists(frw_path):
+                    response = QMessageBox.question(
+                        dlg,
+                        "Подтверждение",
+                        "Проект уже существует. Перезаписать?",
+                        QMessageBox.Yes | QMessageBox.No,
+                        QMessageBox.No
+                    )
+                    if response != QMessageBox.Yes:
+                        return
 
                 self.ks_service.create_fragment(frw_path)
                 with open(pcbprj_path, 'w'): pass
