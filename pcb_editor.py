@@ -125,7 +125,7 @@ class PCBEditor(QMainWindow):
 
             project_path = os.path.join(project_folder, project_name)
 
-            if not os.path.exists(project_path):
+            if not os.path.exists(project_folder):
                 QMessageBox.warning(dlg, "Ошибка", f"Папка '{project_folder}' не существует!")
                 return
 
