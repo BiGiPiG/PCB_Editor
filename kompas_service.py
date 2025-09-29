@@ -1,3 +1,5 @@
+import os
+
 import win32com.client
 import pythoncom
 
@@ -36,6 +38,34 @@ class KompasService:
 
         except Exception as e:
             print(f"Ошибка при создании фрагмента: {e}")
+
+    def open_fragment(self, path):
+        """Метод для открытия фрагмента"""
+        try:
+            if not os.path.exists(path):
+                print(f"Файл не существует: {path}")
+                return False
+
+            if not path.lower().endswith('.frw'):
+                path_with_ext = path + '.frw'
+                if os.path.exists(path_with_ext):
+                    path = path_with_ext
+                else:
+                    print(f"Файл с расширением .frw не найден: {path}")
+                    return False
+
+            print(f"Открываем файл: {path}")
+            document = self.kompas.Documents.Open(path)
+            if document:
+                print("Файл успешно открыт")
+                return True
+            else:
+                print("Не удалось открыть файл")
+                return False
+
+        except Exception as e:
+            print(f"Ошибка при открытии фрагмента: {e}")
+            return False
 
     def cleanup(self):
         """Очистка COM объектов"""

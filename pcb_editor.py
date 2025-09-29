@@ -57,8 +57,15 @@ class PCBEditor(QMainWindow):
         fileMenu.addAction(exitAction)
 
     def open_project(self):
-        self.statusBar.showMessage("Открыть проект")
-        # TODO realise open project functional
+        print("open project")
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Открыть проект",
+            "",
+            "PCB Project Files (*.pcbprj)"
+        )
+        if file_path:
+            self.ks_service.open_fragment(file_path.replace(".pcbprj", ".frw"))
 
     def new_project(self):
         print("Создать проект")
