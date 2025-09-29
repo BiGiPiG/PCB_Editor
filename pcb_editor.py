@@ -1,4 +1,6 @@
 import os
+from pathlib import Path
+
 from PyQt5.QtWidgets import (QMainWindow, QAction, QTextEdit, QStatusBar, QMessageBox, QFileDialog,
                              QDialog, QVBoxLayout, QLabel, QLineEdit, QHBoxLayout, QPushButton)
 from kompas_service import KompasService
@@ -130,17 +132,17 @@ class PCBEditor(QMainWindow):
                 QMessageBox.warning(dlg, "Ошибка", "Выберите папку для проекта!")
                 return
 
-            project_path = os.path.join(project_folder, project_name)
+            project_path = Path(project_folder)
 
-            if not os.path.exists(project_folder):
-                QMessageBox.warning(dlg, "Ошибка", f"Папка '{project_folder}' не существует!")
+            if not os.path.exists(project_path):
+                QMessageBox.warning(dlg, "Ошибка", f"Папка '{project_path}' не существует!")
                 return
 
             try:
                 os.makedirs(project_path, exist_ok=True)
-                frw_path = os.path.join(project_path, project_name + ".frw")
-                pcbprj_path = os.path.join(project_path, project_name + ".pcbprj")
-
+                frw_path = project_path / f"{project_name}.frw"
+                pcbprj_path = project_path / f"{project_name}.pcbprj"
+                print(frw_path)
                 if os.path.exists(frw_path):
                     response = QMessageBox.question(
                         dlg,
