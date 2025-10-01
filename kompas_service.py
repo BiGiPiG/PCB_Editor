@@ -34,47 +34,7 @@ class KompasService:
 
             doc = self.kompas.Documents.Add(2)
 
-            doc2d = self.kompas_api7_module.IKompasDocument2D(doc)
-
-            views = doc2d.ViewsAndLayersManager.Views.View(0)
-            
-            conteiner = self.kompas_api7_module.IDrawingContainer(views)
-            
-            macro = conteiner.MacroObjects.Add()
-            
-            m1 = self.kompas_api7_module.IDrawingContainer(macro)
-
-            l1 = m1.LineSegments.Add()
-
-            l1.Style = 3
-            l1.X1 = -5
-            l1.Y1 = 0
-            l1.X2 = 5
-            l1.Y2 = 0
-
-            l1.Update()
-
-            l2 = m1.LineSegments.Add()
-
-            l2.Style = 3
-            l2.X1 = 0
-            l2.Y1 = -5
-            l2.X2 = 0
-            l2.Y2 = 5
-
-            l2.Update()
-
-            c1 = m1.Circles.Add()
-
-            c1.Style = 3
-            c1.Xc = 0
-            c1.Yc = 0
-            c1.Radius = 3
-
-            c1.Update()
-
-            macro.Name = "Ноль станка"
-            macro.Update()
+            self.create_start_point(doc)
 
             doc.SaveAs(path)
             print(f"Создан файл с нулевой точкой: {path}")
@@ -83,6 +43,49 @@ class KompasService:
             print(f"Ошибка при создании фрагмента: {e}")
             import traceback
             traceback.print_exc()
+
+    def create_start_point(self, doc):
+        doc2d = self.kompas_api7_module.IKompasDocument2D(doc)
+
+        views = doc2d.ViewsAndLayersManager.Views.View(0)
+
+        conteiner = self.kompas_api7_module.IDrawingContainer(views)
+
+        macro = conteiner.MacroObjects.Add()
+
+        m1 = self.kompas_api7_module.IDrawingContainer(macro)
+
+        l1 = m1.LineSegments.Add()
+
+        l1.Style = 3
+        l1.X1 = -5
+        l1.Y1 = 0
+        l1.X2 = 5
+        l1.Y2 = 0
+
+        l1.Update()
+
+        l2 = m1.LineSegments.Add()
+
+        l2.Style = 3
+        l2.X1 = 0
+        l2.Y1 = -5
+        l2.X2 = 0
+        l2.Y2 = 5
+
+        l2.Update()
+
+        c1 = m1.Circles.Add()
+
+        c1.Style = 3
+        c1.Xc = 0
+        c1.Yc = 0
+        c1.Radius = 3
+
+        c1.Update()
+
+        macro.Name = "Ноль станка"
+        macro.Update()
 
     def open_fragment(self, path):
         """Метод для открытия фрагмента"""
