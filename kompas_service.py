@@ -76,9 +76,6 @@ class KompasService:
             macro.Name = "Ноль станка"
             macro.Update()
 
-            if not path.lower().endswith('.frw'):
-                path += '.frw'
-
             doc.SaveAs(path)
             print(f"Создан файл с нулевой точкой: {path}")
 

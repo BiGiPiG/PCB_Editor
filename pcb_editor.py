@@ -132,7 +132,7 @@ class PCBEditor(QMainWindow):
                 QMessageBox.warning(dlg, "Ошибка", "Выберите папку для проекта!")
                 return
 
-            project_path = Path(project_folder)
+            project_path = Path(project_folder) / f"{project_name}"
 
             if not os.path.exists(project_path):
                 QMessageBox.warning(dlg, "Ошибка", f"Папка '{project_path}' не существует!")
