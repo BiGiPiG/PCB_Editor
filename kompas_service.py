@@ -36,8 +36,13 @@ class KompasService:
 
             doc2d = self.kompas_api7_module.IKompasDocument2D(doc)
 
-            views = doc2d.ViewsAndLayersManager.Views[0]
-            m1 = views.MacroObjects.Add()
+            views = doc2d.ViewsAndLayersManager.Views.View(0)
+            
+            conteiner = self.kompas_api7_module.IDrawingContainer(views)
+            
+            macro = conteiner.MacroObjects.Add()
+            
+            m1 = self.kompas_api7_module.IDrawingContainer(macro)
 
             l1 = m1.LineSegments.Add()
 
@@ -57,7 +62,7 @@ class KompasService:
             l2.X2 = 0
             l2.Y2 = 5
 
-            l1.Update()
+            l2.Update()
 
             c1 = m1.Circles.Add()
 
@@ -68,8 +73,8 @@ class KompasService:
 
             c1.Update()
 
-            m1.Name = "Ноль станка"
-            m1.Update()
+            macro.Name = "Ноль станка"
+            macro.Update()
 
             if not path.lower().endswith('.frw'):
                 path += '.frw'
