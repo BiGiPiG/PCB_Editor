@@ -132,18 +132,15 @@ class PCBEditor(QMainWindow):
                 QMessageBox.warning(dlg, "Ошибка", "Выберите папку для проекта!")
                 return
 
-            project_path = Path(project_folder) / f"{project_name}"
+            project_path = Path(project_folder)
 
             if not os.path.exists(project_path):
                 QMessageBox.warning(dlg, "Ошибка", f"Папка '{project_path}' не существует!")
                 return
 
             try:
-                os.makedirs(project_path, exist_ok=True)
-                frw_path = project_path / f"{project_name}.frw"
-                pcbprj_path = project_path / f"{project_name}.pcbprj"
-                print(frw_path)
-                if os.path.exists(frw_path):
+                project_path = project_path / f"{project_name}"
+                if os.path.exists(project_path):
                     response = QMessageBox.question(
                         dlg,
                         "Подтверждение",
@@ -153,6 +150,11 @@ class PCBEditor(QMainWindow):
                     )
                     if response != QMessageBox.Yes:
                         return
+                os.makedirs(project_path, exist_ok=True)
+                frw_path = project_path / f"{project_name}.frw"
+                pcbprj_path = project_path / f"{project_name}.pcbprj"
+                print(frw_path)
+
 
                 self.ks_service.create_fragment(frw_path)
                 with open(pcbprj_path, 'w'): pass
