@@ -2,13 +2,15 @@ import os
 from pathlib import Path
 
 from PyQt5.QtWidgets import (QMainWindow, QAction, QTextEdit, QStatusBar, QMessageBox, QFileDialog,
-                             QDialog, QVBoxLayout, QLabel, QLineEdit, QHBoxLayout, QPushButton)
+                             QDialog, QVBoxLayout, QLabel, QLineEdit, QHBoxLayout, QPushButton, QTreeWidget,
+                             QTreeWidgetItem)
 from kompas_service import KompasService
 
 
 class PCBEditor(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.tree_view = None
         self.initUI()
         self.ks_service = KompasService()
 
@@ -16,8 +18,9 @@ class PCBEditor(QMainWindow):
         self.setWindowTitle('Редактор печатных плат')
         self.setGeometry(100, 100, 1000, 700)
 
-        self.canvas = QTextEdit()
-        self.setCentralWidget(self.canvas)
+        self.tree_view = QTreeWidget()
+        self.tree_view.setHeaderLabel("")
+        self.setCentralWidget(self.tree_view)
 
         self.create_menus()
 
@@ -68,6 +71,7 @@ class PCBEditor(QMainWindow):
         )
         if file_path:
             self.ks_service.open_fragment(file_path.replace(".pcbprj", ".frw"))
+            self.build_project_tree()
 
     def new_project(self):
         print("Создать проект")
@@ -157,6 +161,7 @@ class PCBEditor(QMainWindow):
 
 
                 self.ks_service.create_fragment(frw_path)
+                self.build_project_tree()
                 with open(pcbprj_path, 'w'): pass
 
                 self.statusBar.showMessage(f"Создан проект: {project_path}")
@@ -174,6 +179,16 @@ class PCBEditor(QMainWindow):
         cancel_button.clicked.connect(cancel)
 
         dlg.exec()
+
+    def build_project_tree(self, project_name="project"):
+        print("Построение дерева проекта...")
+        self.tree_view.clear()
+
+        root = QTreeWidgetItem(self.tree_view)
+        root.setText(0, project_name)
+        for macros in self.ks_service.get_macros():
+            macro_item = QTreeWidgetItem(root)
+            macro_item.setText(0, macros)
 
     def add_tracks(self):
         self.statusBar.showMessage("Режим добавления дорожек")

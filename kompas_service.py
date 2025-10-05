@@ -87,6 +87,17 @@ class KompasService:
         macro.Name = "Ноль станка"
         macro.Update()
 
+    def get_macros(self):
+        """Метод для получения макро объектов"""
+        doc2d = self.kompas_api7_module.IKompasDocument2D(self.kompas.ActiveDocument)
+
+        views = doc2d.ViewsAndLayersManager.Views.View(0)
+
+        container = self.kompas_api7_module.IDrawingContainer(views)
+        macro_objects = container.MacroObjects
+
+        return [str(macro.CLSID) for macro in macro_objects]
+
     def open_fragment(self, path):
         """Метод для открытия фрагмента"""
         try:
