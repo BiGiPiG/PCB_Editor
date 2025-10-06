@@ -11,8 +11,8 @@ class PCBEditor(QMainWindow):
     def __init__(self):
         super().__init__()
         self.tree_view = None
-        self.initUI()
         self.ks_service = KompasService()
+        self.initUI()
 
     def initUI(self):
         self.setWindowTitle('Редактор печатных плат')
@@ -29,7 +29,17 @@ class PCBEditor(QMainWindow):
         self.statusBar.showMessage("Готово")
 
     def create_menus(self):
-        # Меню Файл
+        self.create_file_menu()
+        self.create_edit_menus()
+
+    def create_edit_menus(self):
+        edit_menu = self.menuBar().addMenu('Редактировать')
+        self.create_point_action = QAction('Создать начальную точку', self)
+        self.create_point_action.triggered.connect(self.ks_service.create_start_point)
+        self.create_point_action.setDisabled(True)
+        edit_menu.addAction(self.create_point_action)
+
+    def create_file_menu(self):
         fileMenu = self.menuBar().addMenu('Файл')
 
         newAction = QAction('Создать проект...', self)
@@ -189,6 +199,8 @@ class PCBEditor(QMainWindow):
         for macros in self.ks_service.get_macros():
             macro_item = QTreeWidgetItem(root)
             macro_item.setText(0, macros)
+
+        self.create_point_action.setDisabled(False)
 
     def add_tracks(self):
         self.statusBar.showMessage("Режим добавления дорожек")

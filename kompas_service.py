@@ -11,6 +11,7 @@ class KompasService:
             pythoncom.CoInitializeEx(pythoncom.COINIT_MULTITHREADED)
             self.kompas = None
             self.kompas_api7_module = None
+            self.doc = None
             name = "Kompas.Application.7"
 
             try:
@@ -32,11 +33,11 @@ class KompasService:
         """Метод для создания фрагмента"""
         try:
 
-            doc = self.kompas.Documents.Add(2)
+            self.doc = self.kompas.Documents.Add(2)
 
-            self.create_start_point(doc)
+            self.create_start_point()
 
-            doc.SaveAs(path)
+            self.doc.SaveAs(path)
             print(f"Создан файл с нулевой точкой: {path}")
 
         except Exception as e:
@@ -44,8 +45,8 @@ class KompasService:
             import traceback
             traceback.print_exc()
 
-    def create_start_point(self, doc):
-        doc2d = self.kompas_api7_module.IKompasDocument2D(doc)
+    def create_start_point(self):
+        doc2d = self.kompas_api7_module.IKompasDocument2D(self.doc)
 
         views = doc2d.ViewsAndLayersManager.Views.View(0)
 
@@ -86,6 +87,7 @@ class KompasService:
 
         macro.Name = "Ноль станка"
         macro.Update()
+        print("Ноль станка успешно создан")
 
     def get_macros(self):
         """Метод для получения макро объектов"""
@@ -114,8 +116,8 @@ class KompasService:
                     return False
 
             print(f"Открываем файл: {path}")
-            document = self.kompas.Documents.Open(path)
-            if document:
+            self.doc = self.kompas.Documents.Open(path)
+            if self.doc:
                 print("Файл успешно открыт")
                 return True
             else:
