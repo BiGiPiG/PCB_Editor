@@ -1,9 +1,10 @@
 import os
 from pathlib import Path
 
-from PyQt5.QtWidgets import (QMainWindow, QAction, QTextEdit, QStatusBar, QMessageBox, QFileDialog,
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import (QMainWindow, QAction, QStatusBar, QMessageBox, QFileDialog,
                              QDialog, QVBoxLayout, QLabel, QLineEdit, QHBoxLayout, QPushButton, QTreeWidget,
-                             QTreeWidgetItem)
+                             QTreeWidgetItem, QMenu)
 from kompas_service import KompasService
 
 
@@ -20,6 +21,8 @@ class PCBEditor(QMainWindow):
 
         self.tree_view = QTreeWidget()
         self.tree_view.setHeaderLabel("")
+        self.tree_view.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tree_view.customContextMenuRequested.connect(self.show_context_menu)
         self.setCentralWidget(self.tree_view)
 
         self.create_menus()
@@ -27,6 +30,29 @@ class PCBEditor(QMainWindow):
         self.statusBar = QStatusBar()
         self.setStatusBar(self.statusBar)
         self.statusBar.showMessage("Готово")
+
+    def show_context_menu(self, position):
+        item = self.tree_view.itemAt(position)
+        if not item or not item.parent():
+            return
+
+        parent = item.parent()
+        if parent and parent.parent() is not None:
+            return
+
+        context_menu = QMenu(self)
+
+        rename_action = QAction("Переименовать", self)
+        delete_action = QAction("Удалить", self)
+
+        rename_action.triggered.connect(lambda: self.ks_service.rename_macro(item.text(0)))
+        delete_action.triggered.connect(lambda: self.ks_service.delete_macro(item.text(0)))
+
+        context_menu.addAction(rename_action)
+        context_menu.addAction(delete_action)
+
+        context_menu.exec_(self.tree_view.viewport().mapToGlobal(position))
+
 
     def create_menus(self):
         self.create_file_menu()
@@ -80,8 +106,9 @@ class PCBEditor(QMainWindow):
             "PCB Project Files (*.pcbprj)"
         )
         if file_path:
+            project_name = os.path.splitext(os.path.basename(file_path))[0]
             self.ks_service.open_fragment(file_path.replace(".pcbprj", ".frw"))
-            self.build_project_tree()
+            self.build_project_tree(project_name)
 
     def new_project(self):
         print("Создать проект")
@@ -171,7 +198,7 @@ class PCBEditor(QMainWindow):
 
 
                 self.ks_service.create_fragment(frw_path)
-                self.build_project_tree()
+                self.build_project_tree(project_name)
                 with open(pcbprj_path, 'w'): pass
 
                 self.statusBar.showMessage(f"Создан проект: {project_path}")

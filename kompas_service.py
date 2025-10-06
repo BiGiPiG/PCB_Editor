@@ -128,6 +128,14 @@ class KompasService:
             print(f"Ошибка при открытии фрагмента: {e}")
             return False
 
+    def delete_macro(self, property):
+        """метод для удаления макро объекта по его свойству"""
+        print(f"delete_macro {property}")
+
+    def rename_macro(self, property):
+        """метод для переименования макро объекта по его свойству"""
+        print(f"rename_macro {property}")
+
     def cleanup(self):
         """Очистка COM объектов"""
         try:
