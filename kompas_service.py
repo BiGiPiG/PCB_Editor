@@ -86,6 +86,41 @@ class KompasService:
         c1.Radius = 3
 
         c1.Update()
+        
+        a1 = m1.Arcs.Add()
+
+        a1.Style = 3
+        a1.Xc = 0
+        a1.Yc = 0
+        a1.Angle1 = 0
+        a1.Angle2 = 90
+        a1.Direction = False
+        a1.Radius = 3
+
+        a1.Update()
+        
+        a2 = m1.Arcs.Add()
+
+        a2.Style = 3
+        a2.Xc = 0
+        a2.Yc = 0
+        a2.Angle1 = 180
+        a2.Angle2 = 270
+        a2.Direction = False
+        a2.Radius = 3
+
+        a2.Update()
+        
+        c1 = m1.Colourings.Add()
+        
+        b1 = self.kompas_api7_module.IBoundariesObject(c1)
+        
+        b1.AddBoundaries(l1, False)
+        b1.AddBoundaries(l2, False)
+        b1.AddBoundaries(a1, False)
+        b1.AddBoundaries(a2, False)
+        
+        c1.Update()
 
         macro.Name = "Ноль станка"
         prop = self.property_mng.AddProperty(doc2d, None)
