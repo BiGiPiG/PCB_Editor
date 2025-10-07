@@ -12,12 +12,14 @@ class KompasService:
             self.kompas = None
             self.kompas_api7_module = None
             self.doc = None
+            self.property_mng = None
             name = "Kompas.Application.7"
 
             try:
                 self.kompas = win32com.client.Dispatch(name)
                 self.kompas.Visible = True
                 self.kompas_api7_module = gencache.EnsureModule("{69AC2981-37C0-4379-84FD-5DD2F3C0A520}", 0, 1, 0)
+                self.property_mng = self.kompas_api7_module.IPropertyMng(self.kompas)
             except Exception as e:
                 print(f"Не удалось подключиться к {name}: {e}")
 
@@ -86,6 +88,10 @@ class KompasService:
         c1.Update()
 
         macro.Name = "Ноль станка"
+        prop = self.property_mng.AddProperty(doc2d, None)
+        prop = self.kompas_api7_module.IProperty(prop)
+        prop.Name("Тип")
+        prop.Update()
         macro.Update()
         print("Ноль станка успешно создан")
 
@@ -127,6 +133,18 @@ class KompasService:
         except Exception as e:
             print(f"Ошибка при открытии фрагмента: {e}")
             return False
+
+    def find_macro_by_type(self, type):
+        property_mng = self.kompas
+        doc2d = self.kompas_api7_module.IKompasDocument2D(self.kompas.ActiveDocument)
+
+        views = doc2d.ViewsAndLayersManager.Views.View(0)
+
+        container = self.kompas_api7_module.IDrawingContainer(views)
+        macro_objects = container.MacroObjects
+
+        return [obj for obj in macro_objects
+            if obj.GetPropertyValue(property_mng.GetProperty(doc2d, "Тип"), False) == type]
 
     def delete_macro(self, property):
         """метод для удаления макро объекта по его свойству"""
