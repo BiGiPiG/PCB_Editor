@@ -2,7 +2,8 @@ import os
 
 import win32com.client
 import pythoncom
-from win32com.client import gencache
+from pythoncom import VT_EMPTY
+from win32com.client import gencache, VARIANT
 
 
 class KompasService:
@@ -123,10 +124,16 @@ class KompasService:
         c1.Update()
 
         macro.Name = "Ноль станка"
-        prop = self.property_mng.AddProperty(doc2d, None)
-        prop = self.kompas_api7_module.IProperty(prop)
-        prop.Name("Тип")
+        prop = self.property_mng.AddProperty(doc2d, VARIANT(VT_EMPTY,None))
+
+        print(prop)
+        prop.Name = "Тип"
         prop.Update()
+        
+        keeper = self.kompas_api7_module.IPropertyKeeper(macro)
+        
+        keeper.SetPropertyValue(prop, "Ноль станка", False)
+        
         macro.Update()
         print("Ноль станка успешно создан")
 
