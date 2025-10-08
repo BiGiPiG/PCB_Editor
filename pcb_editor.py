@@ -1,4 +1,5 @@
 import os
+from drillingFileReader import drillingFileReader
 from pathlib import Path
 
 from PyQt5.QtCore import Qt
@@ -17,7 +18,7 @@ class PCBEditor(QMainWindow):
 
     def initUI(self):
         self.setWindowTitle('Редактор печатных плат')
-        self.setGeometry(100, 100, 1000, 700)
+        self.setGeometry(100, 100, 500, 300)
 
         self.tree_view = QTreeWidget()
         self.tree_view.setHeaderLabel("")
@@ -237,6 +238,20 @@ class PCBEditor(QMainWindow):
         self.statusBar.showMessage("Режим добавления границ")
         # TODO функционал добавления границ
 
+    def open_holes(self):
+        print("open holes")
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Открыть файл сверловки",
+            "",
+            "Holes Files (*.drl)"
+        )
+        return file_path   
+
     def add_holes(self):
-        self.statusBar.showMessage("Режим добавления отверстий")
+        path = self.open_holes()
+        if path:
+            holes = drillingFileReader.readFile(path)
+            self.ks_service.create_holes(holes)
+            self.statusBar.showMessage("Режим добавления отверстий")
         # TODO функционал добавления отверстий

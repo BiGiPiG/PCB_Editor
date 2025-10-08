@@ -139,6 +139,33 @@ class KompasService:
         
         print("Ноль станка успешно создан")
 
+    def create_holes(self, holes):
+        doc2d = self.kompas_api7_module.IKompasDocument2D(self.doc)
+
+        views = doc2d.ViewsAndLayersManager.Views.View(0)
+
+        conteiner = self.kompas_api7_module.IDrawingContainer(views)
+
+        macro = conteiner.MacroObjects.Add()
+
+        m1 = self.kompas_api7_module.IDrawingContainer(macro)
+        
+        for diam in holes:
+            for hole in holes[diam]:
+                l = m1.Circles.Add()
+                l.Xc = hole[0]
+                l.Yc = hole[1]
+                l.Radius = diam / 2
+                l.Style = 2
+                l.Update()
+                c = m1.Colourings.Add()
+                c.Color1 = 255; 
+                b = self.kompas_api7_module.IBoundariesObject(c)
+                b.AddBoundaries(l, False)
+                c.Update()
+                
+        macro.Update()
+
     def get_macros(self):
         """Метод для получения макро объектов"""
         doc2d = self.kompas_api7_module.IKompasDocument2D(self.kompas.ActiveDocument)
@@ -202,7 +229,7 @@ class KompasService:
         """Очистка COM объектов"""
         try:
             if hasattr(self, 'kompas') and self.kompas:
-                self.kompas.Quit()
+                #self.kompas.Quit()
                 self.kompas = None
             pythoncom.CoUninitialize()
         except:
