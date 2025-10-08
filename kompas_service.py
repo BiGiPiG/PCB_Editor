@@ -122,19 +122,21 @@ class KompasService:
         b1.AddBoundaries(a2, False)
         
         c1.Update()
+        
+        macro.Update()
 
         macro.Name = "Ноль станка"
         prop = self.property_mng.AddProperty(doc2d, VARIANT(VT_EMPTY,None))
 
-        print(prop)
         prop.Name = "Тип"
         prop.Update()
         
         keeper = self.kompas_api7_module.IPropertyKeeper(macro)
         
-        keeper.SetPropertyValue(prop, "Ноль станка", False)
+        prop = self.property_mng.GetProperty(doc2d, "Тип")
         
-        macro.Update()
+        print(keeper.SetPropertyValue(prop, "Ноль станка", False))
+        
         print("Ноль станка успешно создан")
 
     def get_macros(self):
