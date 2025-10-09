@@ -53,9 +53,9 @@ class KompasService:
 
         views = doc2d.ViewsAndLayersManager.Views.View(0)
 
-        conteiner = self.kompas_api7_module.IDrawingContainer(views)
+        container = self.kompas_api7_module.IDrawingContainer(views)
 
-        macro = conteiner.MacroObjects.Add()
+        macro = container.MacroObjects.Add()
 
         m1 = self.kompas_api7_module.IDrawingContainer(macro)
 
@@ -144,9 +144,9 @@ class KompasService:
 
         views = doc2d.ViewsAndLayersManager.Views.View(0)
 
-        conteiner = self.kompas_api7_module.IDrawingContainer(views)
+        container = self.kompas_api7_module.IDrawingContainer(views)
 
-        macro = conteiner.MacroObjects.Add()
+        macro = container.MacroObjects.Add()
 
         m1 = self.kompas_api7_module.IDrawingContainer(macro)
         
@@ -159,7 +159,7 @@ class KompasService:
                 l.Style = 2
                 l.Update()
                 c = m1.Colourings.Add()
-                c.Color1 = 255; 
+                c.Color1 = 255
                 b = self.kompas_api7_module.IBoundariesObject(c)
                 b.AddBoundaries(l, False)
                 c.Update()
