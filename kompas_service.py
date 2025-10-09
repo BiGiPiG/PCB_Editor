@@ -123,6 +123,8 @@ class KompasService:
         
         c1.Update()
         
+        macro.AddDefaultHotPoint(0, 0)
+        
         macro.Update()
 
         macro.Name = "Ноль станка"
@@ -135,7 +137,7 @@ class KompasService:
         
         prop = self.property_mng.GetProperty(doc2d, "Тип")
         
-        print(keeper.SetPropertyValue(prop, "Ноль станка", False))
+        keeper.SetPropertyValue(prop, "Ноль станка", False)
         
         print("Ноль станка успешно создан")
 
@@ -165,6 +167,12 @@ class KompasService:
                 c.Update()
                 
         macro.Update()
+        
+        keeper = self.kompas_api7_module.IPropertyKeeper(macro)
+        
+        prop = self.property_mng.GetProperty(doc2d, "Тип")
+        
+        keeper.SetPropertyValue(prop, "Отверстия", False)
 
     def get_macros(self):
         """Метод для получения макро объектов"""
