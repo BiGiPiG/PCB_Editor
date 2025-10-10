@@ -38,8 +38,8 @@ class KompasService:
 
             self.doc = self.kompas.Documents.Add(2)
 
-            self.create_start_point()
             self.add_type_property()
+            self.create_start_point()
 
             self.doc.SaveAs(path)
             print(f"Создан файл с нулевой точкой: {path}")
