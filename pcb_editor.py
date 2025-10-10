@@ -1,4 +1,6 @@
 import os
+import traceback
+
 from drillingFileReader import drillingFileReader
 from pathlib import Path
 
@@ -12,6 +14,7 @@ from kompas_service import KompasService
 class PCBEditor(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.project_name = None
         self.tree_view = None
         self.ks_service = KompasService()
         self.initUI()
@@ -107,9 +110,9 @@ class PCBEditor(QMainWindow):
             "PCB Project Files (*.pcbprj)"
         )
         if file_path:
-            project_name = os.path.splitext(os.path.basename(file_path))[0]
+            self.project_name = os.path.splitext(os.path.basename(file_path))[0]
             self.ks_service.open_fragment(file_path.replace(".pcbprj", ".frw"))
-            self.build_project_tree(project_name)
+            self.build_project_tree(self.project_name)
 
     def new_project(self):
         print("Создать проект")
@@ -163,10 +166,10 @@ class PCBEditor(QMainWindow):
                 folder_input.setText(folder)
 
         def create_project():
-            project_name = name_input.text().strip()
+            self.project_name = name_input.text().strip()
             project_folder = folder_input.text().strip()
 
-            if not project_name:
+            if not self.project_name:
                 QMessageBox.warning(dlg, "Ошибка", "Введите название проекта!")
                 return
 
@@ -181,7 +184,7 @@ class PCBEditor(QMainWindow):
                 return
 
             try:
-                project_path = project_path / f"{project_name}"
+                project_path = project_path / f"{self.project_name}"
                 if os.path.exists(project_path):
                     response = QMessageBox.question(
                         dlg,
@@ -193,17 +196,17 @@ class PCBEditor(QMainWindow):
                     if response != QMessageBox.Yes:
                         return
                 os.makedirs(project_path, exist_ok=True)
-                frw_path = project_path / f"{project_name}.frw"
-                pcbprj_path = project_path / f"{project_name}.pcbprj"
+                frw_path = project_path / f"{self.project_name}.frw"
+                pcbprj_path = project_path / f"{self.project_name}.pcbprj"
                 print(frw_path)
 
 
                 self.ks_service.create_fragment(frw_path)
-                self.build_project_tree(project_name)
+                self.build_project_tree(self.project_name)
                 with open(pcbprj_path, 'w'): pass
 
                 self.statusBar.showMessage(f"Создан проект: {project_path}")
-                QMessageBox.information(dlg, "Успех", f"Проект '{project_name}' создан успешно!")
+                QMessageBox.information(dlg, "Успех", f"Проект '{self.project_name}' создан успешно!")
                 dlg.accept()
 
             except Exception as e:
@@ -222,13 +225,19 @@ class PCBEditor(QMainWindow):
         print("Построение дерева проекта...")
         self.tree_view.clear()
 
-        root = QTreeWidgetItem(self.tree_view)
-        root.setText(0, project_name)
-        for macros in self.ks_service.get_macros():
-            macro_item = QTreeWidgetItem(root)
-            macro_item.setText(0, macros)
+        try:
+            root = QTreeWidgetItem(self.tree_view)
+            root.setText(0, project_name)
+            for macros in self.ks_service.get_macros():
+                macro_item = QTreeWidgetItem(root)
+                macro_item.setText(0, macros)
 
-        self.create_point_action.setDisabled(False)
+            self.create_point_action.setDisabled(False)
+        except Exception as e:
+            self.statusBar.showMessage("Произошла ошибка при создании дерева проекта")
+            print("Ошибка:", str(e))
+            traceback.print_exc()
+
 
     def add_tracks(self):
         self.statusBar.showMessage("Режим добавления дорожек")
@@ -251,7 +260,12 @@ class PCBEditor(QMainWindow):
     def add_holes(self):
         path = self.open_holes()
         if path:
-            holes = drillingFileReader.readFile(path)
-            self.ks_service.create_holes(holes)
-            self.statusBar.showMessage("Режим добавления отверстий")
-        # TODO функционал добавления отверстий
+            try:
+                holes = drillingFileReader.readFile(path)
+                self.ks_service.create_holes(holes)
+                self.statusBar.showMessage("Режим добавления отверстий")
+            except Exception as e:
+                self.statusBar.showMessage("Произошла ошибка при добавлении отверстий")
+                print("Ошибка:", str(e))
+                traceback.print_exc()
+        self.build_project_tree(self.project_name)
