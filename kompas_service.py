@@ -145,25 +145,9 @@ class KompasService:
 
         container = self.kompas_api7_module.IDrawingContainer(views)
 
-        try:
-            prop = self.property_mng.GetProperty(doc2d, "Тип")
-        except:
-            prop = self.property_mng.AddProperty(doc2d, VARIANT(VT_EMPTY, None))
-            prop.Name = "Тип"
-            prop.Update()
-
         macro = container.MacroObjects.Add()
         macro.Name = "Отверстия"
-        macro.Update()
-
-        prop.Name = "Тип"
-        prop.Update()
-
-        prop = self.property_mng.GetProperty(doc2d, "Тип")
-
-        keeper = self.kompas_api7_module.IPropertyKeeper(macro)
-        keeper.SetPropertyValue(prop, "Отверстия", False)
-
+        
         m1 = self.kompas_api7_module.IDrawingContainer(macro)
 
         for diam in holes:
@@ -181,6 +165,11 @@ class KompasService:
                 c.Update()
 
         macro.Update()
+        
+        prop = self.property_mng.GetProperty(doc2d, "Тип")
+
+        keeper = self.kompas_api7_module.IPropertyKeeper(macro)
+        keeper.SetPropertyValue(prop, "Отверстия", False)
 
     def get_macros(self):
         """Метод для получения макро объектов"""
