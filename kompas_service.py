@@ -39,6 +39,7 @@ class KompasService:
             self.doc = self.kompas.Documents.Add(2)
 
             self.create_start_point()
+            self.add_type_property()
 
             self.doc.SaveAs(path)
             print(f"Создан файл с нулевой точкой: {path}")
@@ -47,6 +48,14 @@ class KompasService:
             print(f"Ошибка при создании фрагмента: {e}")
             import traceback
             traceback.print_exc()
+
+    def add_type_property(self):
+        doc2d = self.kompas_api7_module.IKompasDocument2D(self.doc)
+        if self.property_mng.GetProperty(doc2d, "Тип") is None:
+            prop = self.property_mng.AddProperty(doc2d, VARIANT(VT_EMPTY, None))
+            prop.Name = "Тип"
+            prop.Update()
+
 
     def create_start_point(self):
         doc2d = self.kompas_api7_module.IKompasDocument2D(self.doc)
@@ -126,10 +135,6 @@ class KompasService:
         macro.Update()
 
         macro.Name = "Ноль станка"
-        prop = self.property_mng.AddProperty(doc2d, VARIANT(VT_EMPTY,None))
-
-        prop.Name = "Тип"
-        prop.Update()
 
         keeper = self.kompas_api7_module.IPropertyKeeper(macro)
         
@@ -206,6 +211,7 @@ class KompasService:
 
             print(f"Открываем файл: {path}")
             self.doc = self.kompas.Documents.Open(path)
+            self.add_type_property()
             if self.doc:
                 print("Файл успешно открыт")
                 return True
