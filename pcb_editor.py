@@ -1,6 +1,8 @@
 import os
 import traceback
 
+from PyQt5.QtGui import QDoubleValidator
+
 from drillingFileReader import drillingFileReader
 from pathlib import Path
 
@@ -48,12 +50,17 @@ class PCBEditor(QMainWindow):
 
         rename_action = QAction("Переименовать", self)
         delete_action = QAction("Удалить", self)
+        some_action = QAction("<UNK>", self)
+
 
         rename_action.triggered.connect(lambda: self.ks_service.rename_macro(item.text(0)))
         delete_action.triggered.connect(lambda: self.ks_service.delete_macro(item.text(0)))
+        some_action.triggered.connect(self.show_drill_menu)
 
         context_menu.addAction(rename_action)
         context_menu.addAction(delete_action)
+        if item.text(0) == "Отверстия":
+            context_menu.addAction(some_action)
 
         context_menu.exec_(self.tree_view.viewport().mapToGlobal(position))
 
@@ -65,7 +72,7 @@ class PCBEditor(QMainWindow):
     def create_edit_menus(self):
         edit_menu = self.menuBar().addMenu('Редактировать')
         self.create_point_action = QAction('Создать начальную точку', self)
-        self.create_point_action.triggered.connect(self.ks_service.create_start_point)
+        self.create_point_action.triggered.connect(self.create_start_point)
         self.create_point_action.setDisabled(True)
         edit_menu.addAction(self.create_point_action)
 
@@ -269,3 +276,72 @@ class PCBEditor(QMainWindow):
                 print("Ошибка:", str(e))
                 traceback.print_exc()
         self.build_project_tree(self.project_name)
+
+    def show_drill_menu(self):
+        """Метод для ввода параметров отверстия"""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Параметры отверстия")
+        dialog.setModal(True)
+        dialog.setFixedSize(300, 180)
+
+        layout = QVBoxLayout()
+
+        fields = []
+        labels = ["depth:", "overrun:", "feedrate:"]
+
+        validator = QDoubleValidator()
+        validator.setNotation(QDoubleValidator.StandardNotation)
+
+        for label_text in labels:
+            row = QHBoxLayout()
+            label = QLabel(label_text)
+            line_edit = QLineEdit()
+            line_edit.setPlaceholderText("0.0")
+
+            line_edit.setValidator(validator)
+
+            row.addWidget(label)
+            row.addWidget(line_edit)
+            layout.addLayout(row)
+            fields.append(line_edit)
+
+        button_layout = QHBoxLayout()
+        ok_button = QPushButton("OK")
+        cancel_button = QPushButton("Отмена")
+
+        button_layout.addStretch()
+        button_layout.addWidget(ok_button)
+        button_layout.addWidget(cancel_button)
+
+        layout.addLayout(button_layout)
+        dialog.setLayout(layout)
+
+        def on_ok():
+            try:
+                values = []
+                for field in fields:
+                    text = field.text().strip()
+                    if not text:
+                        raise ValueError("Поле не может быть пустым")
+                    try:
+                        val = float(text.replace(',', '.'))
+                        values.append(val)
+                    except ValueError:
+                        raise ValueError("Некорректное число")
+
+                depth, overrun, feedrate = values
+                print(f"Введены параметры: depth={depth}, overrun={overrun}, feedrate={feedrate}")
+                dialog.accept()
+
+            except ValueError as e:
+                QMessageBox.warning(dialog, "Ошибка ввода", f"Введите корректные числа\n{e}")
+
+        ok_button.clicked.connect(on_ok)
+        cancel_button.clicked.connect(dialog.reject)
+
+        dialog.exec_()
+
+    def create_start_point(self):
+        self.ks_service.create_start_point()
+        self.build_project_tree(self.project_name)
+
