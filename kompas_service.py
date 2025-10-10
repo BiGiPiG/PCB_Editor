@@ -53,9 +53,9 @@ class KompasService:
 
         views = doc2d.ViewsAndLayersManager.Views.View(0)
 
-        container = self.kompas_api7_module.IDrawingContainer(views)
+        conteiner = self.kompas_api7_module.IDrawingContainer(views)
 
-        macro = container.MacroObjects.Add()
+        macro = conteiner.MacroObjects.Add()
 
         m1 = self.kompas_api7_module.IDrawingContainer(macro)
 
@@ -130,40 +130,26 @@ class KompasService:
 
         prop.Name = "Тип"
         prop.Update()
-
+        
         keeper = self.kompas_api7_module.IPropertyKeeper(macro)
         
         prop = self.property_mng.GetProperty(doc2d, "Тип")
         
-        keeper.SetPropertyValue(prop, "Ноль станка", False)
+        print(keeper.SetPropertyValue(prop, "Ноль станка", False))
+        
         print("Ноль станка успешно создан")
 
     def create_holes(self, holes):
         doc2d = self.kompas_api7_module.IKompasDocument2D(self.doc)
 
         views = doc2d.ViewsAndLayersManager.Views.View(0)
-        container = self.kompas_api7_module.IDrawingContainer(views)
 
-        try:
-            prop = self.property_mng.GetProperty(doc2d, "Тип")
-        except:
-            prop = self.property_mng.AddProperty(doc2d, VARIANT(VT_EMPTY, None))
-            prop.Name = "Тип"
-            prop.Update()
+        conteiner = self.kompas_api7_module.IDrawingContainer(views)
 
-        macro = container.MacroObjects.Add()
-        macro.Name = "Отверстия"
-
-        prop.Name = "Тип"
-        prop.Update()
-
-        prop = self.property_mng.GetProperty(doc2d, "Тип")
-
-        keeper = self.kompas_api7_module.IPropertyKeeper(macro)
-        keeper.SetPropertyValue(prop, "Отверстия", False)
+        macro = conteiner.MacroObjects.Add()
 
         m1 = self.kompas_api7_module.IDrawingContainer(macro)
-
+        
         for diam in holes:
             for hole in holes[diam]:
                 l = m1.Circles.Add()
@@ -173,30 +159,23 @@ class KompasService:
                 l.Style = 2
                 l.Update()
                 c = m1.Colourings.Add()
-                c.Color1 = 255
+                c.Color1 = 255; 
                 b = self.kompas_api7_module.IBoundariesObject(c)
                 b.AddBoundaries(l, False)
                 c.Update()
-
+                
         macro.Update()
 
     def get_macros(self):
         """Метод для получения макро объектов"""
-        doc2d = self.kompas_api7_module.IKompasDocument2D(self.doc)
+        doc2d = self.kompas_api7_module.IKompasDocument2D(self.kompas.ActiveDocument)
 
         views = doc2d.ViewsAndLayersManager.Views.View(0)
 
         container = self.kompas_api7_module.IDrawingContainer(views)
         macro_objects = container.MacroObjects
 
-        types = list()
-        for macro in macro_objects:
-            keeper = self.kompas_api7_module.IPropertyKeeper(macro)
-            prop = self.property_mng.GetProperty(doc2d, "Тип")
-            value = keeper.GetPropertyValue(prop, None, True, True)
-            types.append(value[1])
-
-        return types
+        return [str(macro.CLSID) for macro in macro_objects]
 
     def open_fragment(self, path):
         """Метод для открытия фрагмента"""
