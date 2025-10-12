@@ -214,7 +214,7 @@ class Hole: #Отверстие
         
       
 # Удалить после отладки
-traectory = []
+#traectory = []
 
 #traectory.append(Line(5, 5, 10, 10))
 #traectory.append(Line(10, 10, 20, 10))
@@ -224,10 +224,10 @@ traectory = []
 
 #print(Postprocessor.isolationTrajectory(traectory, -0.05, 2, 60)) #Вывод комманд
 
-traectory.append(Hole(0, 0, 0.8))
-traectory.append(Hole(10, 10, 0.8))
-traectory.append(Hole(20, 20, 1))
-traectory.append(Hole(10, 20, 1))
-traectory.append(Hole(5, 40, 0.8))
+#traectory.append(Hole(0, 0, 0.8))
+#traectory.append(Hole(10, 10, 0.8))
+#traectory.append(Hole(20, 20, 1))
+#traectory.append(Hole(10, 20, 1))
+#traectory.append(Hole(5, 40, 0.8))
 
-print(Postprocessor.drilling(traectory, -0.05, 2, 60))
+#print(Postprocessor.drilling(traectory, -0.05, 2, 60))

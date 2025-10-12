@@ -4,7 +4,7 @@ import win32com.client
 import pythoncom
 from pythoncom import VT_EMPTY
 from win32com.client import gencache, VARIANT
-
+from postprocessor import Hole, Postprocessor
 
 class KompasService:
     def __init__(self):
@@ -132,6 +132,8 @@ class KompasService:
         
         c1.Update()
         
+        macro.AddDefaultHotPoint(0, 0)
+        
         macro.Update()
 
         macro.Name = "Ноль станка"
@@ -175,6 +177,30 @@ class KompasService:
 
         keeper = self.kompas_api7_module.IPropertyKeeper(macro)
         keeper.SetPropertyValue(prop, "Отверстия", False)
+        
+    def create_drilling_program(self, startPoint, points, depth, overrun, feedrate):
+    
+        m1 = self.kompas_api7_module.IDrawingContainer(startPoint[0])
+        
+        m2 = self.kompas_api7_module.IDrawingContainer(points)
+        
+        c = m1.Circles.Circle(0)
+        
+        diams = m2.Circles
+        
+        result = self.kompas_api7_module.IMacroObject(points).TransformPointToView(c.Xc, c.Yc, True)
+        
+        dX = result[0]
+        dY = result[1]
+        print(dX, dY)
+        holes = []
+        
+        for diam in diams:
+            diam = self.kompas_api7_module.ICircle(diam)
+            holes.append(Hole(diam.Xc - dX, diam.Yc - dY, diam.Radius*2))
+            
+        return Postprocessor.drilling(holes, depth, overrun, feedrate)
+        
 
     def get_macros(self):
         """Метод для получения макро объектов"""
@@ -185,14 +211,11 @@ class KompasService:
         container = self.kompas_api7_module.IDrawingContainer(views)
         macro_objects = container.MacroObjects
 
-        types = list()
+        macros = list()
         for macro in macro_objects:
-            keeper = self.kompas_api7_module.IPropertyKeeper(macro)
-            prop = self.property_mng.GetProperty(doc2d, "Тип")
-            value = keeper.GetPropertyValue(prop, None, True, True)
-            types.append(value[1])
+            macros.append(macro)
 
-        return types
+        return macros
 
     def open_fragment(self, path):
         """Метод для открытия фрагмента"""
@@ -224,7 +247,7 @@ class KompasService:
             return False
 
     def find_macro_by_type(self, type):
-        property_mng = self.kompas
+        prop = self.property_mng.GetProperty(self.doc, "Тип")
         doc2d = self.kompas_api7_module.IKompasDocument2D(self.kompas.ActiveDocument)
 
         views = doc2d.ViewsAndLayersManager.Views.View(0)
@@ -233,7 +256,7 @@ class KompasService:
         macro_objects = container.MacroObjects
 
         return [obj for obj in macro_objects
-            if obj.GetPropertyValue(property_mng.GetProperty(doc2d, "Тип"), False) == type]
+            if self.kompas_api7_module.IPropertyKeeper(obj).GetPropertyValue(prop, None, True, True)[1] == type]
 
     def delete_macro(self, property):
         """метод для удаления макро объекта по его свойству"""

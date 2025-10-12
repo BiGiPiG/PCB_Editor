@@ -55,7 +55,7 @@ class PCBEditor(QMainWindow):
 
         rename_action.triggered.connect(lambda: self.ks_service.rename_macro(item.text(0)))
         delete_action.triggered.connect(lambda: self.ks_service.delete_macro(item.text(0)))
-        control_program_action.triggered.connect(self.show_drill_menu)
+        control_program_action.triggered.connect(lambda: self.show_drill_menu(item.data(1, 0)))
 
         context_menu.addAction(rename_action)
         context_menu.addAction(delete_action)
@@ -235,9 +235,13 @@ class PCBEditor(QMainWindow):
         try:
             root = QTreeWidgetItem(self.tree_view)
             root.setText(0, project_name)
-            for macros in self.ks_service.get_macros():
+            for macro in self.ks_service.get_macros():
+                keeper = self.ks_service.kompas_api7_module.IPropertyKeeper(macro)
+                prop = self.ks_service.property_mng.GetProperty(self.ks_service.doc, "Тип")
+                value = keeper.GetPropertyValue(prop, None, True, True)
                 macro_item = QTreeWidgetItem(root)
-                macro_item.setText(0, macros)
+                macro_item.setText(0, value[1])
+                macro_item.setData(1, 0, macro)
 
             self.create_point_action.setDisabled(False)
         except Exception as e:
@@ -277,7 +281,7 @@ class PCBEditor(QMainWindow):
                 traceback.print_exc()
         self.build_project_tree(self.project_name)
 
-    def show_drill_menu(self):
+    def show_drill_menu(self, macro):
         """Метод для ввода параметров отверстия"""
         dialog = QDialog(self)
         dialog.setWindowTitle("Меню параметров")
@@ -331,6 +335,7 @@ class PCBEditor(QMainWindow):
 
                 depth, overrun, feedrate = values
                 print(f"Введены параметры: depth={depth}, overrun={overrun}, feedrate={feedrate}")
+                print(self.ks_service.create_drilling_program(self.ks_service.find_macro_by_type("Ноль станка"), macro, depth, overrun, feedrate))
                 dialog.accept()
 
             except ValueError as e:
