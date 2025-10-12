@@ -50,17 +50,17 @@ class PCBEditor(QMainWindow):
 
         rename_action = QAction("Переименовать", self)
         delete_action = QAction("Удалить", self)
-        some_action = QAction("<UNK>", self)
+        control_program_action = QAction("Сформировать УП", self)
 
 
         rename_action.triggered.connect(lambda: self.ks_service.rename_macro(item.text(0)))
         delete_action.triggered.connect(lambda: self.ks_service.delete_macro(item.text(0)))
-        some_action.triggered.connect(self.show_drill_menu)
+        control_program_action.triggered.connect(self.show_drill_menu)
 
         context_menu.addAction(rename_action)
         context_menu.addAction(delete_action)
         if item.text(0) == "Отверстия":
-            context_menu.addAction(some_action)
+            context_menu.addAction(control_program_action)
 
         context_menu.exec_(self.tree_view.viewport().mapToGlobal(position))
 
@@ -280,14 +280,14 @@ class PCBEditor(QMainWindow):
     def show_drill_menu(self):
         """Метод для ввода параметров отверстия"""
         dialog = QDialog(self)
-        dialog.setWindowTitle("Параметры отверстия")
+        dialog.setWindowTitle("Меню параметров")
         dialog.setModal(True)
         dialog.setFixedSize(300, 180)
 
         layout = QVBoxLayout()
 
         fields = []
-        labels = ["depth:", "overrun:", "feedrate:"]
+        labels = ["Глубина:", "Высота перебега:", "Скорость подачи:"]
 
         validator = QDoubleValidator()
         validator.setNotation(QDoubleValidator.StandardNotation)
@@ -296,7 +296,7 @@ class PCBEditor(QMainWindow):
             row = QHBoxLayout()
             label = QLabel(label_text)
             line_edit = QLineEdit()
-            line_edit.setPlaceholderText("0.0")
+            line_edit.setPlaceholderText("0.0 мм")
 
             line_edit.setValidator(validator)
 
