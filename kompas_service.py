@@ -179,25 +179,29 @@ class KompasService:
         keeper.SetPropertyValue(prop, "Отверстия", False)
         
     def create_drilling_program(self, startPoint, points, depth, overrun, feedrate):
-    
-        m1 = self.kompas_api7_module.IDrawingContainer(startPoint[0])
         
-        m2 = self.kompas_api7_module.IDrawingContainer(points)
+        m = self.kompas_api7_module.IDrawingContainer(points)
         
-        c = m1.Circles.Circle(0)
+        diams = m.Circles
         
-        diams = m2.Circles
+        result = self.kompas_api7_module.IMacroObject(startPoint[0]).GetPlacement()
         
-        result = self.kompas_api7_module.IMacroObject(points).TransformPointToView(c.Xc, c.Yc, True)
+        dX = result[1]
+        dY = result[2]
         
-        dX = result[0]
-        dY = result[1]
-        print(dX, dY)
+        result = self.kompas_api7_module.IMacroObject(points).GetPlacement()
+        
+        dX -= result[1]
+        dY -= result[2]
+        
         holes = []
         
         for diam in diams:
+            
+            
+        
             diam = self.kompas_api7_module.ICircle(diam)
-            holes.append(Hole(diam.Xc - dX, diam.Yc - dY, diam.Radius*2))
+            holes.append(Hole(round(diam.Xc - dX, 4), round(diam.Yc - dY, 4), round(diam.Radius*2, 4)))
             
         return Postprocessor.drilling(holes, depth, overrun, feedrate)
         
