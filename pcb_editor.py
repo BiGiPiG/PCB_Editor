@@ -335,7 +335,18 @@ class PCBEditor(QMainWindow):
 
                 depth, overrun, feedrate = values
                 print(f"Введены параметры: depth={depth}, overrun={overrun}, feedrate={feedrate}")
-                print(self.ks_service.create_drilling_program(self.ks_service.find_macro_by_type("Ноль станка"), macro, depth, overrun, feedrate))
+                program = self.ks_service.create_drilling_program(self.ks_service.find_macro_by_type("Ноль станка"), macro, depth, overrun, feedrate)
+                
+                file_path, _ = QFileDialog.getSaveFileName(
+                    self,
+                    "Сохранить файл сверловки",
+                    "",
+                    "CNC program (*.nc)"
+                )
+                
+                with open(file_path, "w") as file:
+                    file.write(program)
+                
                 dialog.accept()
 
             except ValueError as e:
