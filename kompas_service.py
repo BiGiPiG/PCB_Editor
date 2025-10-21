@@ -144,6 +144,38 @@ class KompasService:
         
         keeper.SetPropertyValue(prop, "Ноль станка", False)
         print("Ноль станка успешно создан")
+        
+    def draw_border(self, lines):
+    
+        doc2d = self.kompas_api7_module.IKompasDocument2D(self.doc)
+
+        views = doc2d.ViewsAndLayersManager.Views.View(0)
+
+        container = self.kompas_api7_module.IDrawingContainer(views)
+
+        macro = container.MacroObjects.Add()
+        macro.Name = "Границы"
+        
+        m = self.kompas_api7_module.IDrawingContainer(macro)
+        
+        for line in lines:
+            
+            lineSegment = m.LineSegments.Add()
+            
+            lineSegment.X1 = line.x1
+            lineSegment.Y1 = line.y1
+            lineSegment.X2 = line.x2
+            lineSegment.Y2 = line.y2
+            
+            lineSegment.Update()
+        
+        macro.Update()
+        
+        prop = self.property_mng.GetProperty(doc2d, "Тип")
+
+        keeper = self.kompas_api7_module.IPropertyKeeper(macro)
+        keeper.SetPropertyValue(prop, "Границы", False)
+        
 
     def create_holes(self, holes):
         doc2d = self.kompas_api7_module.IKompasDocument2D(self.doc)

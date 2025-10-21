@@ -4,6 +4,7 @@ import traceback
 from PyQt5.QtGui import QDoubleValidator
 
 from drillingFileReader import drillingFileReader
+from dxfFileReader import DXFReader
 from pathlib import Path
 
 from PyQt5.QtCore import Qt
@@ -253,10 +254,14 @@ class PCBEditor(QMainWindow):
     def add_tracks(self):
         self.statusBar.showMessage("Режим добавления дорожек")
         # TODO функционал добавления дорожек
+        
+        self.ks_service.draw_border(DXFReader.readFile("D:\\YandexDisk\\Documents\\Плата для мнемосхем модульная\\Основной модуль\\Основной модуль-F_Cu.dxf"))
 
     def add_borders(self):
         self.statusBar.showMessage("Режим добавления границ")
         # TODO функционал добавления границ
+        
+        self.ks_service.draw_border(DXFReader.readFile("D:\\YandexDisk\\Documents\\Плата для мнемосхем модульная\\Основной модуль\\Основной модуль-Edge_Cuts.dxf"))
 
     def open_holes(self):
         print("open holes")
