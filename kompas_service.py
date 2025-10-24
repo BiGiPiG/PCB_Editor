@@ -1,9 +1,9 @@
 import os
 
 import win32com.client
-import pythoncom
+import pythoncom, win32com.client.connect, win32com.server.util
 from pythoncom import VT_EMPTY
-from win32com.client import gencache, VARIANT
+from win32com.client import gencache, VARIANT, Dispatch
 from postprocessor import Hole, Postprocessor
 
 class KompasService:
@@ -314,3 +314,44 @@ class KompasService:
 
     def __del__(self):
         self.cleanup()
+   
+    def advise_kompas_event(self, event, event_handler, event_source):
+
+        app_notify_event = BaseEvent(event, event_handler, event_source)
+        app_notify_event.advise()
+       
+class BaseEvent(object):
+
+    _public_methods_ = ["__on_event"]
+
+    def __init__(self, event, event_handler, event_source):
+
+        self.__event = event
+        self.__event_handler = event_handler
+        self.__connection = None
+        self.event_source = event_source
+
+    def __del__(self):
+
+        if not (self.__connection is None):
+            self.__connection.Disconnect()
+            del self.__connection
+
+    def _invokeex_(self, command_id, locale_id, flags, params, result, exept_info):
+        return self.__on_event(command_id, params)
+
+    def _query_interface_(self, iid):
+        if iid == self.__event.CLSID:
+            return win32com.server.util.wrap(self)
+
+    def advise(self):
+        if self.__connection is None and not (self.event_source is None):
+            self.__connection = win32com.client.connect.SimpleConnection(self.event_source, self, self.__event.CLSID)
+
+    def unadvise(self):
+        if self.__connection is not None and self.event_source is not None:
+            self.__connection.Disconnect()
+            self.__connection = None
+
+    def __on_event(self, command_id, params):
+        return self.__event_handler(command_id, params)

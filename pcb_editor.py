@@ -52,16 +52,23 @@ class PCBEditor(QMainWindow):
         rename_action = QAction("Переименовать", self)
         delete_action = QAction("Удалить", self)
         control_program_action = QAction("Сформировать УП", self)
+        trajectory_action = QAction("Сформировать траекторию", self)
 
 
         rename_action.triggered.connect(lambda: self.ks_service.rename_macro(item.text(0)))
         delete_action.triggered.connect(lambda: self.ks_service.delete_macro(item.text(0)))
-        control_program_action.triggered.connect(lambda: self.show_drill_menu(item.data(1, 0)))
 
         context_menu.addAction(rename_action)
         context_menu.addAction(delete_action)
         if item.text(0) == "Отверстия":
+            control_program_action.triggered.connect(lambda: self.show_drill_menu(item.data(1, 0)))
             context_menu.addAction(control_program_action)
+        if item.text(0) == "Границы":
+            trajectory_action.triggered.connect(lambda: self.show_drill_menu(item.data(1, 0)))
+            context_menu.addAction(trajectory_action)
+        if item.text(0) == "Дорожки":
+            trajectory_action.triggered.connect(lambda: self.show_drill_menu(item.data(1, 0)))
+            context_menu.addAction(trajectory_action)
 
         context_menu.exec_(self.tree_view.viewport().mapToGlobal(position))
 
@@ -121,6 +128,15 @@ class PCBEditor(QMainWindow):
             self.project_name = os.path.splitext(os.path.basename(file_path))[0]
             self.ks_service.open_fragment(file_path.replace(".pcbprj", ".frw"))
             self.build_project_tree(self.project_name)
+            
+            doc = self.ks_service.doc
+            doc2d = self.ks_service.kompas_api7_module.IKompasDocument2D(doc)
+
+            views = doc2d.ViewsAndLayersManager.Views.View(0)
+
+            container = self.ks_service.kompas_api7_module.IDrawingContainer(views)
+            print(self.ks_service.kompas_api7_module.ksDrawingObjectNotify, self.create_menus, container.MacroObjects)
+            self.ks_service.advise_kompas_event(self.ks_service.kompas_api7_module.ksDrawingObjectNotify, lambda a, b: self.build_project_tree(self.project_name), container.MacroObjects)
 
     def new_project(self):
         print("Создать проект")
