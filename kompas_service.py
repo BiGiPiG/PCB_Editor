@@ -247,11 +247,7 @@ class KompasService:
         container = self.kompas_api7_module.IDrawingContainer(views)
         macro_objects = container.MacroObjects
 
-        macros = list()
-        for macro in macro_objects:
-            macros.append(macro)
-
-        return macros
+        return [macro for macro in macro_objects]
 
     def open_fragment(self, path):
         """Метод для открытия фрагмента"""
