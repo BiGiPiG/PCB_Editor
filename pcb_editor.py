@@ -17,6 +17,7 @@ from kompas_service import KompasService
 class PCBEditor(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.addTracksAction = None
         self.project_name = None
         self.tree_view = None
         self.ks_service = KompasService()
@@ -99,22 +100,25 @@ class PCBEditor(QMainWindow):
 
         fileMenu.addSeparator()
 
-        addTracksAction = QAction('Добавить дорожки', self)
-        addTracksAction.triggered.connect(self.add_tracks)
-        fileMenu.addAction(addTracksAction)
+        self.addTracksAction = QAction('Добавить дорожки', self)
+        self.addTracksAction.triggered.connect(self.add_tracks)
+        fileMenu.addAction(self.addTracksAction)
+        self.addTracksAction.setDisabled(True)
 
-        addBordersAction = QAction('Добавить границы', self)
-        addBordersAction.triggered.connect(self.add_borders)
-        fileMenu.addAction(addBordersAction)
+        self.addBordersAction = QAction('Добавить границы', self)
+        self.addBordersAction.triggered.connect(self.add_borders)
+        fileMenu.addAction(self.addBordersAction)
+        self.addBordersAction.setDisabled(True)
 
-        addHolesAction = QAction('Добавить отверстия', self)
-        addHolesAction.triggered.connect(self.add_holes)
-        fileMenu.addAction(addHolesAction)
+        self.addHolesAction = QAction('Добавить отверстия', self)
+        self.addHolesAction.triggered.connect(self.add_holes)
+        fileMenu.addAction(self.addHolesAction)
+        self.addHolesAction.setDisabled(True)
 
-        exitAction = QAction('Выход', self)
-        exitAction.setShortcut('Ctrl+Q')
-        exitAction.triggered.connect(self.close)
-        fileMenu.addAction(exitAction)
+        self.exitAction = QAction('Выход', self)
+        self.exitAction.setShortcut('Ctrl+Q')
+        self.exitAction.triggered.connect(self.close)
+        fileMenu.addAction(self.exitAction)
 
     def open_project(self):
         print("open project")
@@ -252,6 +256,7 @@ class PCBEditor(QMainWindow):
         try:
             root = QTreeWidgetItem(self.tree_view)
             root.setText(0, project_name)
+            root.setExpanded(True)
             for macro in self.ks_service.get_macros():
                 keeper = self.ks_service.kompas_api7_module.IPropertyKeeper(macro)
                 prop = self.ks_service.property_mng.GetProperty(self.ks_service.doc, "Тип")
@@ -261,6 +266,7 @@ class PCBEditor(QMainWindow):
                 macro_item.setData(1, 0, macro)
 
             self.create_point_action.setDisabled(False)
+            self.set_action_enable()
         except Exception as e:
             self.statusBar.showMessage("Произошла ошибка при создании дерева проекта")
             print("Ошибка:", str(e))
@@ -269,15 +275,45 @@ class PCBEditor(QMainWindow):
 
     def add_tracks(self):
         self.statusBar.showMessage("Режим добавления дорожек")
-        # TODO функционал добавления дорожек
-        
-        self.ks_service.draw_border(DXFReader.readFile("D:\\YandexDisk\\Documents\\Плата для мнемосхем модульная\\Основной модуль\\Основной модуль-F_Cu.dxf"))
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Открыть файл дорожек",
+            "",
+            "Tracks Files (*.drl)"
+        )
+
+        if not file_path:
+            self.statusBar.showMessage("Файл не выбран")
+            return
+
+        try:
+            border_data = DXFReader.readFile(file_path)
+            self.ks_service.draw_border(border_data)
+            self.statusBar.showMessage(f"Дорожки загружены из: {os.path.basename(file_path)}")
+        except Exception as e:
+            self.statusBar.showMessage(f"Ошибка загрузки: {str(e)}")
+            print(f"Ошибка при чтении файла дорожек: {e}")
 
     def add_borders(self):
         self.statusBar.showMessage("Режим добавления границ")
-        # TODO функционал добавления границ
-        
-        self.ks_service.draw_border(DXFReader.readFile("D:\\YandexDisk\\Documents\\Плата для мнемосхем модульная\\Основной модуль\\Основной модуль-Edge_Cuts.dxf"))
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Открыть файл границ",
+            "",
+            "Borders Files (*.drl)"
+        )
+
+        if not file_path:
+            self.statusBar.showMessage("Файл не выбран")
+            return
+
+        try:
+            border_data = DXFReader.readFile(file_path)
+            self.ks_service.draw_border(border_data)
+            self.statusBar.showMessage(f"Границы загружены из: {os.path.basename(file_path)}")
+        except Exception as e:
+            self.statusBar.showMessage(f"Ошибка загрузки: {str(e)}")
+            print(f"Ошибка при чтении файла границ: {e}")
 
     def open_holes(self):
         print("open holes")
@@ -287,7 +323,7 @@ class PCBEditor(QMainWindow):
             "",
             "Holes Files (*.drl)"
         )
-        return file_path   
+        return file_path
 
     def add_holes(self):
         path = self.open_holes()
@@ -381,4 +417,9 @@ class PCBEditor(QMainWindow):
     def create_start_point(self):
         self.ks_service.create_start_point()
         self.build_project_tree(self.project_name)
+
+    def set_action_enable(self):
+        self.addHolesAction.setDisabled(False)
+        self.addBordersAction.setDisabled(False)
+        self.addTracksAction.setDisabled(False)
 
