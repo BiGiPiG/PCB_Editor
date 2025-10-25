@@ -5,6 +5,8 @@ import pythoncom, win32com.client.connect, win32com.server.util
 from pythoncom import VT_EMPTY
 from win32com.client import gencache, VARIANT, Dispatch
 from postprocessor import Hole, Postprocessor
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QProgressDialog
 
 class KompasService:
     def __init__(self):
@@ -144,6 +146,47 @@ class KompasService:
         
         keeper.SetPropertyValue(prop, "Ноль станка", False)
         print("Ноль станка успешно создан")
+        
+        
+    def draw_tracks(self, lines):
+    
+        doc2d = self.kompas_api7_module.IKompasDocument2D(self.doc)
+
+        views = doc2d.ViewsAndLayersManager.Views.View(0)
+
+        container = self.kompas_api7_module.IDrawingContainer(views)
+
+        macro = container.MacroObjects.Add()
+        macro.Name = "Дорожки"
+        
+        m = self.kompas_api7_module.IDrawingContainer(macro)
+        
+        pd = QProgressDialog("Operation in progress.", "Cancel", 0, len(lines))
+        pd.setWindowModality(Qt.WindowModal)
+        
+        i = 0
+        
+        for line in lines:
+            
+            pd.setValue(i)
+            i+=1
+            
+            lineSegment = m.LineSegments.Add()
+            
+            lineSegment.X1 = line.x1
+            lineSegment.Y1 = line.y1
+            lineSegment.X2 = line.x2
+            lineSegment.Y2 = line.y2
+            
+            lineSegment.Update()
+        
+        macro.Update()
+        
+        prop = self.property_mng.GetProperty(doc2d, "Тип")
+
+        keeper = self.kompas_api7_module.IPropertyKeeper(macro)
+        keeper.SetPropertyValue(prop, "Дорожки", False)
+        
         
     def draw_border(self, lines):
     

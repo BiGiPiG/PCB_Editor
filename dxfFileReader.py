@@ -10,7 +10,7 @@ class DXFReader:
         msp = doc.modelspace()
         
         lines = []
-
+        
         for e in msp:
             
             if e.dxftype() == "LINE":
@@ -18,5 +18,5 @@ class DXFReader:
                 line = Line(e.dxf.start[0], e.dxf.start[1], e.dxf.end[0], e.dxf.end[1])
                 
                 lines.append(line)
-                
+            
         return lines

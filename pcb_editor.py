@@ -65,10 +65,10 @@ class PCBEditor(QMainWindow):
             control_program_action.triggered.connect(lambda: self.show_drill_menu(item.data(1, 0)))
             context_menu.addAction(control_program_action)
         if item.text(0) == "Границы":
-            trajectory_action.triggered.connect(lambda: self.show_drill_menu(item.data(1, 0)))
+            trajectory_action.triggered.connect(lambda: self.show_borders_trajectory_menu(item.data(1, 0)))
             context_menu.addAction(trajectory_action)
         if item.text(0) == "Дорожки":
-            trajectory_action.triggered.connect(lambda: self.show_drill_menu(item.data(1, 0)))
+            trajectory_action.triggered.connect(lambda: self.show_tracks_trajectory_menu(item.data(1, 0)))
             context_menu.addAction(trajectory_action)
 
         context_menu.exec_(self.tree_view.viewport().mapToGlobal(position))
@@ -279,7 +279,7 @@ class PCBEditor(QMainWindow):
             self,
             "Открыть файл дорожек",
             "",
-            "Tracks Files (*.drl)"
+            "Tracks Files (*.dxf)"
         )
 
         if not file_path:
@@ -287,8 +287,8 @@ class PCBEditor(QMainWindow):
             return
 
         try:
-            border_data = DXFReader.readFile(file_path)
-            self.ks_service.draw_border(border_data)
+            tracks_data = DXFReader.readFile(file_path)
+            self.ks_service.draw_tracks(tracks_data)
             self.statusBar.showMessage(f"Дорожки загружены из: {os.path.basename(file_path)}")
         except Exception as e:
             self.statusBar.showMessage(f"Ошибка загрузки: {str(e)}")
@@ -300,7 +300,7 @@ class PCBEditor(QMainWindow):
             self,
             "Открыть файл границ",
             "",
-            "Borders Files (*.drl)"
+            "Borders Files (*.dxf)"
         )
 
         if not file_path:
