@@ -280,6 +280,13 @@ class KompasService:
             
         return Postprocessor.drilling(holes, depth, overrun, feedrate)
         
+    def select_macro(self, macro):
+    
+        document2D1 = self.kompas_api7_module.IKompasDocument2D1(self.doc)
+    
+        selectionManager = document2D1.SelectionManager
+        selectionManager.UnselectAll()
+        selectionManager.Select(macro)
 
     def get_macros(self):
         """Метод для получения макро объектов"""

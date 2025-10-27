@@ -267,11 +267,13 @@ class PCBEditor(QMainWindow):
 
             self.create_point_action.setDisabled(False)
             self.set_action_enable()
+            
+            self.tree_view.clicked.connect(lambda : self.ks_service.select_macro(self.tree_view.currentItem().data(1, 0)))
+            
         except Exception as e:
             self.statusBar.showMessage("Произошла ошибка при создании дерева проекта")
             print("Ошибка:", str(e))
             traceback.print_exc()
-
 
     def add_tracks(self):
         self.statusBar.showMessage("Режим добавления дорожек")
@@ -349,6 +351,82 @@ class PCBEditor(QMainWindow):
 
         fields = []
         labels = ["Глубина:", "Высота перебега:", "Скорость подачи:"]
+
+        validator = QDoubleValidator()
+        validator.setNotation(QDoubleValidator.StandardNotation)
+
+        for label_text in labels:
+            row = QHBoxLayout()
+            label = QLabel(label_text)
+            line_edit = QLineEdit()
+            line_edit.setPlaceholderText("0.0 мм")
+
+            line_edit.setValidator(validator)
+
+            row.addWidget(label)
+            row.addWidget(line_edit)
+            layout.addLayout(row)
+            fields.append(line_edit)
+
+        button_layout = QHBoxLayout()
+        ok_button = QPushButton("OK")
+        cancel_button = QPushButton("Отмена")
+
+        button_layout.addStretch()
+        button_layout.addWidget(ok_button)
+        button_layout.addWidget(cancel_button)
+
+        layout.addLayout(button_layout)
+        dialog.setLayout(layout)
+
+        def on_ok():
+            try:
+                values = []
+                for field in fields:
+                    text = field.text().strip()
+                    if not text:
+                        raise ValueError("Поле не может быть пустым")
+                    try:
+                        val = float(text.replace(',', '.'))
+                        values.append(val)
+                    except ValueError:
+                        raise ValueError("Некорректное число")
+
+                depth, overrun, feedrate = values
+                print(f"Введены параметры: depth={depth}, overrun={overrun}, feedrate={feedrate}")
+                program = self.ks_service.create_drilling_program(self.ks_service.find_macro_by_type("Ноль станка"), macro, depth, overrun, feedrate)
+                
+                file_path, _ = QFileDialog.getSaveFileName(
+                    self,
+                    "Сохранить файл сверловки",
+                    "",
+                    "CNC program (*.nc)"
+                )
+                
+                with open(file_path, "w") as file:
+                    file.write(program)
+                
+                dialog.accept()
+
+            except ValueError as e:
+                QMessageBox.warning(dialog, "Ошибка ввода", f"Введите корректные числа\n{e}")
+
+        ok_button.clicked.connect(on_ok)
+        cancel_button.clicked.connect(dialog.reject)
+
+        dialog.exec_()
+
+    def show_borders_trajectory_menu(self, macro):
+        """Метод для ввода параметров траектории границ"""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Меню параметров")
+        dialog.setModal(True)
+        dialog.setFixedSize(300, 180)
+
+        layout = QVBoxLayout()
+
+        fields = []
+        labels = ["Диаметр инструмента:", "Отступ:", "Тип контура:"]
 
         validator = QDoubleValidator()
         validator.setNotation(QDoubleValidator.StandardNotation)
