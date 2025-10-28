@@ -1,7 +1,7 @@
 import os
 import traceback
 
-from PyQt5.QtGui import QDoubleValidator
+from PyQt5.QtGui import QDoubleValidator, QIntValidator
 
 from drillingFileReader import drillingFileReader
 from dxfFileReader import DXFReader
@@ -494,6 +494,101 @@ class PCBEditor(QMainWindow):
 
             except ValueError as e:
                 QMessageBox.warning(dialog, "Ошибка ввода", f"Введите корректные числа\n{e}")
+
+        ok_button.clicked.connect(on_ok)
+        cancel_button.clicked.connect(dialog.reject)
+
+        dialog.exec_()
+
+    def show_tracks_menu(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Меню параметров")
+        dialog.setModal(True)
+        dialog.setFixedSize(300, 180)
+
+        layout = QVBoxLayout()
+        fields = []
+
+        # Диаметр инструмента
+        validator_diam = QDoubleValidator()
+        validator_diam.setNotation(QDoubleValidator.StandardNotation)
+
+        row1 = QHBoxLayout()
+        label1 = QLabel("Диаметр инструмента:")
+        line_edit1 = QLineEdit()
+        line_edit1.setPlaceholderText("0.0 мм")
+        line_edit1.setValidator(validator_diam)
+        row1.addWidget(label1)
+        row1.addWidget(line_edit1)
+        layout.addLayout(row1)
+        fields.append(line_edit1)
+
+        # Количество линий
+        validator_count = QIntValidator(1, 999)  # минимум 1, максимум 999
+
+        row2 = QHBoxLayout()
+        label2 = QLabel("Количество линий:")
+        line_edit2 = QLineEdit()
+        line_edit2.setPlaceholderText("1")
+        line_edit2.setValidator(validator_count)
+        row2.addWidget(label2)
+        row2.addWidget(line_edit2)
+        layout.addLayout(row2)
+        fields.append(line_edit2)
+
+        # Процент перекрытия
+        validator_overlap = QDoubleValidator(0.0, 100.0, 2)
+        validator_overlap.setNotation(QDoubleValidator.StandardNotation)
+
+        row3 = QHBoxLayout()
+        label3 = QLabel("Процент перекрытия:")
+        line_edit3 = QLineEdit()
+        line_edit3.setPlaceholderText("0.0 %")
+        line_edit3.setValidator(validator_overlap)
+        row3.addWidget(label3)
+        row3.addWidget(line_edit3)
+        layout.addLayout(row3)
+        fields.append(line_edit3)
+
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        ok_button = QPushButton("OK")
+        cancel_button = QPushButton("Отмена")
+        button_layout.addWidget(ok_button)
+        button_layout.addWidget(cancel_button)
+        layout.addLayout(button_layout)
+
+        dialog.setLayout(layout)
+
+        def on_ok():
+            try:
+                tool_diam_text = fields[0].text().strip()
+                count_text = fields[1].text().strip()
+                overlap_text = fields[2].text().strip()
+
+                if not tool_diam_text or not count_text or not overlap_text:
+                    QMessageBox.warning(dialog, "Ошибка", "Заполните все поля!")
+                    return
+
+                tool_diameter = float(tool_diam_text.replace(',', '.'))
+                line_count = int(count_text)
+                overlap_percent = float(overlap_text.replace(',', '.'))
+
+                if tool_diameter <= 0:
+                    raise ValueError("Диаметр инструмента должен быть > 0")
+                if overlap_percent < 0 or overlap_percent > 100:
+                    raise ValueError("Процент перекрытия должен быть от 0 до 100")
+
+                print(f"Параметры дорожек: диаметр={tool_diameter}, линий={line_count}, перекрытие={overlap_percent}%")
+
+                # self.ks_service.create_tracks_trajectory(tool_diameter, line_count, overlap_percent)
+
+                dialog.accept()
+
+            except ValueError as e:
+                QMessageBox.warning(dialog, "Ошибка ввода", f"Некорректное значение:\n{e}")
+            except Exception as e:
+                QMessageBox.critical(dialog, "Ошибка", f"Не удалось обработать параметры:\n{str(e)}")
 
         ok_button.clicked.connect(on_ok)
         cancel_button.clicked.connect(dialog.reject)
