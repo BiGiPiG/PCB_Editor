@@ -10,7 +10,7 @@ from pathlib import Path
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QMainWindow, QAction, QStatusBar, QMessageBox, QFileDialog,
                              QDialog, QVBoxLayout, QLabel, QLineEdit, QHBoxLayout, QPushButton, QTreeWidget,
-                             QTreeWidgetItem, QMenu)
+                             QTreeWidgetItem, QMenu, QComboBox)
 from kompas_service import KompasService
 
 
@@ -426,7 +426,8 @@ class PCBEditor(QMainWindow):
         layout = QVBoxLayout()
 
         fields = []
-        labels = ["Диаметр инструмента:", "Отступ:", "Тип контура:"]
+        labels = ["Диаметр инструмента:", "Отступ:"]
+        contour_types = ["Внешний", "Внутренний"]
 
         validator = QDoubleValidator()
         validator.setNotation(QDoubleValidator.StandardNotation)
@@ -436,13 +437,21 @@ class PCBEditor(QMainWindow):
             label = QLabel(label_text)
             line_edit = QLineEdit()
             line_edit.setPlaceholderText("0.0 мм")
-
             line_edit.setValidator(validator)
 
             row.addWidget(label)
             row.addWidget(line_edit)
             layout.addLayout(row)
             fields.append(line_edit)
+
+        row = QHBoxLayout()
+        label = QLabel("Тип контура:")
+        combo = QComboBox()
+        combo.addItems(contour_types)
+        row.addWidget(label)
+        row.addWidget(combo)
+        layout.addLayout(row)
+        fields.append(combo)
 
         button_layout = QHBoxLayout()
         ok_button = QPushButton("OK")
@@ -457,30 +466,29 @@ class PCBEditor(QMainWindow):
 
         def on_ok():
             try:
-                values = []
-                for field in fields:
-                    text = field.text().strip()
-                    if not text:
-                        raise ValueError("Поле не может быть пустым")
-                    try:
-                        val = float(text.replace(',', '.'))
-                        values.append(val)
-                    except ValueError:
-                        raise ValueError("Некорректное число")
 
-                depth, overrun, feedrate = values
-                print(f"Введены параметры: depth={depth}, overrun={overrun}, feedrate={feedrate}")
-                program = self.ks_service.create_drilling_program(self.ks_service.find_macro_by_type("Ноль станка"), macro, depth, overrun, feedrate)
+                tool_diameter_text = fields[0].text().strip()
+                offset_text = fields[1].text().strip()
+
+                if not tool_diameter_text or not offset_text:
+                    raise ValueError("Поля 'Диаметр инструмента' и 'Отступ' не могут быть пустыми")
+
+                tool_diameter = float(tool_diameter_text.replace(',', '.'))
+                offset = float(offset_text.replace(',', '.'))
+                contour_type = fields[2].currentText()
+
+                print(f"Введены параметры: tool_diameter={tool_diameter}, offset={offset}, contour_type={contour_type}")
+                # program = self.ks_service.create_drilling_program(self.ks_service.find_macro_by_type("Ноль станка"), macro, depth, overrun, feedrate)
                 
-                file_path, _ = QFileDialog.getSaveFileName(
-                    self,
-                    "Сохранить файл сверловки",
-                    "",
-                    "CNC program (*.nc)"
-                )
-                
-                with open(file_path, "w") as file:
-                    file.write(program)
+                # file_path, _ = QFileDialog.getSaveFileName(
+                #     self,
+                #     "Сохранить файл сверловки",
+                #     "",
+                #     "CNC program (*.nc)"
+                # )
+                #
+                # with open(file_path, "w") as file:
+                #     file.write(program)
                 
                 dialog.accept()
 
