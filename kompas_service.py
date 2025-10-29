@@ -219,6 +219,47 @@ class KompasService:
         keeper = self.kompas_api7_module.IPropertyKeeper(macro)
         keeper.SetPropertyValue(prop, "Границы", False)
         
+    def draw_mask(self, lines):
+    
+        doc2d = self.kompas_api7_module.IKompasDocument2D(self.doc)
+
+        views = doc2d.ViewsAndLayersManager.Views.View(0)
+
+        container = self.kompas_api7_module.IDrawingContainer(views)
+
+        macro = container.MacroObjects.Add()
+        macro.Name = "Маска"
+        
+        m = self.kompas_api7_module.IDrawingContainer(macro)
+        
+        pd = QProgressDialog("Operation in progress.", "Cancel", 0, len(lines))
+        pd.setWindowModality(Qt.WindowModal)
+        
+        i = 0
+        
+        for line in lines:
+            
+            pd.setValue(i)
+            i+=1
+            
+            lineSegment = m.LineSegments.Add()
+            
+            lineSegment.Style = 2
+            
+            lineSegment.X1 = line.x1
+            lineSegment.Y1 = line.y1
+            lineSegment.X2 = line.x2
+            lineSegment.Y2 = line.y2
+            
+            lineSegment.Update()
+        
+        macro.Update()
+        
+        prop = self.property_mng.GetProperty(doc2d, "Тип")
+
+        keeper = self.kompas_api7_module.IPropertyKeeper(macro)
+        keeper.SetPropertyValue(prop, "Маска", False)
+        
 
     def create_holes(self, holes):
         doc2d = self.kompas_api7_module.IKompasDocument2D(self.doc)

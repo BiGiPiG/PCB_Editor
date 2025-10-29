@@ -114,6 +114,11 @@ class PCBEditor(QMainWindow):
         self.addHolesAction.triggered.connect(self.add_holes)
         fileMenu.addAction(self.addHolesAction)
         self.addHolesAction.setDisabled(True)
+        
+        self.addMasksAction = QAction('Добавить маску', self)
+        self.addMasksAction.triggered.connect(self.add_mask)
+        fileMenu.addAction(self.addMasksAction)
+        self.addMasksAction.setDisabled(True)
 
         self.exitAction = QAction('Выход', self)
         self.exitAction.setShortcut('Ctrl+Q')
@@ -295,7 +300,28 @@ class PCBEditor(QMainWindow):
         except Exception as e:
             self.statusBar.showMessage(f"Ошибка загрузки: {str(e)}")
             print(f"Ошибка при чтении файла дорожек: {e}")
+    
+    def add_mask(self):
+        self.statusBar.showMessage("Режим добавления границ")
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Открыть файл границ",
+            "",
+            "Mask Files (*.dxf)"
+        )
 
+        if not file_path:
+            self.statusBar.showMessage("Файл не выбран")
+            return
+
+        try:
+            mask_data = DXFReader.readFile(file_path)
+            self.ks_service.draw_mask(mask_data)
+            self.statusBar.showMessage(f"Маска загружена из: {os.path.basename(file_path)}")
+        except Exception as e:
+            self.statusBar.showMessage(f"Ошибка загрузки: {str(e)}")
+            print(f"Ошибка при чтении файла маски: {e}")
+    
     def add_borders(self):
         self.statusBar.showMessage("Режим добавления границ")
         file_path, _ = QFileDialog.getOpenFileName(
@@ -500,7 +526,7 @@ class PCBEditor(QMainWindow):
 
         dialog.exec_()
 
-    def show_tracks_menu(self):
+    def show_tracks_trajectory_menu(self, macro):
         dialog = QDialog(self)
         dialog.setWindowTitle("Меню параметров")
         dialog.setModal(True)
@@ -603,4 +629,5 @@ class PCBEditor(QMainWindow):
         self.addHolesAction.setDisabled(False)
         self.addBordersAction.setDisabled(False)
         self.addTracksAction.setDisabled(False)
+        self.addMasksAction.setDisabled(False)
 
