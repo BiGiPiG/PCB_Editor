@@ -31,6 +31,7 @@ class PCBEditor(QMainWindow):
         self.tree_view.setHeaderLabel("")
         self.tree_view.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tree_view.customContextMenuRequested.connect(self.show_context_menu)
+        self.tree_view.clicked.connect(lambda : self.ks_service.select_macro(self.tree_view.currentItem().data(1, 0)))
         self.setCentralWidget(self.tree_view)
 
         self.create_menus()
@@ -57,7 +58,7 @@ class PCBEditor(QMainWindow):
 
 
         rename_action.triggered.connect(lambda: self.ks_service.rename_macro(item.text(0)))
-        delete_action.triggered.connect(lambda: self.ks_service.delete_macro(item.text(0)))
+        delete_action.triggered.connect(lambda: self.delete_macro(item))
 
         context_menu.addAction(rename_action)
         context_menu.addAction(delete_action)
@@ -73,6 +74,9 @@ class PCBEditor(QMainWindow):
 
         context_menu.exec_(self.tree_view.viewport().mapToGlobal(position))
 
+    def delete_macro(self, item):
+        self.ks_service.delete_macro(item.data(1, 0))
+        self.build_project_tree(self.project_name)
 
     def create_menus(self):
         self.create_file_menu()
@@ -272,8 +276,6 @@ class PCBEditor(QMainWindow):
 
             self.create_point_action.setDisabled(False)
             self.set_action_enable()
-            
-            self.tree_view.clicked.connect(lambda : self.ks_service.select_macro(self.tree_view.currentItem().data(1, 0)))
             
         except Exception as e:
             self.statusBar.showMessage("Произошла ошибка при создании дерева проекта")
@@ -504,6 +506,9 @@ class PCBEditor(QMainWindow):
                 contour_type = fields[2].currentText()
 
                 print(f"Введены параметры: tool_diameter={tool_diameter}, offset={offset}, contour_type={contour_type}")
+                
+                self.ks_service.create_border_trajectory(self.ks_service.find_macro_by_type("Ноль станка"), macro, tool_diameter, offset, contour_type)
+                
                 # program = self.ks_service.create_drilling_program(self.ks_service.find_macro_by_type("Ноль станка"), macro, depth, overrun, feedrate)
                 
                 # file_path, _ = QFileDialog.getSaveFileName(
