@@ -56,7 +56,6 @@ class PCBEditor(QMainWindow):
         control_program_action = QAction("Сформировать УП", self)
         trajectory_action = QAction("Сформировать траекторию", self)
 
-
         rename_action.triggered.connect(lambda: self.ks_service.rename_macro(item.text(0)))
         delete_action.triggered.connect(lambda: self.delete_macro(item))
 
@@ -71,6 +70,12 @@ class PCBEditor(QMainWindow):
         if item.text(0) == "Дорожки":
             trajectory_action.triggered.connect(lambda: self.show_tracks_trajectory_menu(item.data(1, 0)))
             context_menu.addAction(trajectory_action)
+        if item.text(0) == "Траектория дорожек":
+            control_program_action.triggered.connect(lambda: self.show_borders_program_menu(item.data(1, 0)))
+            context_menu.addAction(control_program_action)
+        if item.text(0) == "Траектория границ":
+            control_program_action.triggered.connect(lambda: self.show_borders_program_menu(item.data(1, 0)))
+            context_menu.addAction(control_program_action)
 
         context_menu.exec_(self.tree_view.viewport().mapToGlobal(position))
 
@@ -444,6 +449,84 @@ class PCBEditor(QMainWindow):
 
         dialog.exec_()
 
+    def show_borders_program_menu(self, macro):
+        """Метод для ввода параметров фрезеровки границ"""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Меню параметров")
+        dialog.setModal(True)
+        dialog.setFixedSize(300, 180)
+
+        layout = QVBoxLayout()
+
+        fields = []
+        labels = ["Глубина:", "Высота перебега:", "Скорость подачи:"]
+
+        validator = QDoubleValidator()
+        validator.setNotation(QDoubleValidator.StandardNotation)
+
+        for label_text in labels:
+            row = QHBoxLayout()
+            label = QLabel(label_text)
+            line_edit = QLineEdit()
+            line_edit.setPlaceholderText("0.0 мм")
+
+            line_edit.setValidator(validator)
+
+            row.addWidget(label)
+            row.addWidget(line_edit)
+            layout.addLayout(row)
+            fields.append(line_edit)
+
+        button_layout = QHBoxLayout()
+        ok_button = QPushButton("OK")
+        cancel_button = QPushButton("Отмена")
+
+        button_layout.addStretch()
+        button_layout.addWidget(ok_button)
+        button_layout.addWidget(cancel_button)
+
+        layout.addLayout(button_layout)
+        dialog.setLayout(layout)
+
+        def on_ok():
+            try:
+                values = []
+                for field in fields:
+                    text = field.text().strip()
+                    if not text:
+                        raise ValueError("Поле не может быть пустым")
+                    try:
+                        val = float(text.replace(',', '.'))
+                        values.append(val)
+                    except ValueError:
+                        raise ValueError("Некорректное число")
+
+                depth, overrun, feedrate = values
+                
+                print(f"Введены параметры: depth={depth}, overrun={overrun}, feedrate={feedrate}")
+                
+                program = self.ks_service.create_milling_program(self.ks_service.find_macro_by_type("Ноль станка"), macro, depth, overrun, feedrate)
+                
+                file_path, _ = QFileDialog.getSaveFileName(
+                    self,
+                    "Сохранить файл фрезеровки",
+                    "",
+                    "CNC program (*.nc)"
+                )
+                
+                with open(file_path, "w") as file:
+                    file.write(program)
+                
+                dialog.accept()
+
+            except ValueError as e:
+                QMessageBox.warning(dialog, "Ошибка ввода", f"Введите корректные числа\n{e}")
+
+        ok_button.clicked.connect(on_ok)
+        cancel_button.clicked.connect(dialog.reject)
+
+        dialog.exec_()
+
     def show_borders_trajectory_menu(self, macro):
         """Метод для ввода параметров траектории границ"""
         dialog = QDialog(self)
@@ -612,7 +695,7 @@ class PCBEditor(QMainWindow):
 
                 print(f"Параметры дорожек: диаметр={tool_diameter}, линий={line_count}, перекрытие={overlap_percent}%")
 
-                # self.ks_service.create_tracks_trajectory(tool_diameter, line_count, overlap_percent)
+                self.ks_service.create_tracks_trajectory(self.ks_service.find_macro_by_type("Ноль станка"), macro, tool_diameter, line_count, overlap_percent)
 
                 dialog.accept()
 

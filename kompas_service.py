@@ -4,10 +4,12 @@ import win32com.client
 import pythoncom, win32com.client.connect, win32com.server.util
 from pythoncom import VT_EMPTY
 from win32com.client import gencache, VARIANT, Dispatch
-from postprocessor import Hole, Postprocessor
+from postprocessor import Hole, Line, Arc, Postprocessor
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QProgressDialog
 from collections import defaultdict, deque
+from _thread import *
+import time
 
 class KompasService:
     def __init__(self):
@@ -333,117 +335,11 @@ class KompasService:
 
         try:
 
-            (result, X, Y, angle, mirror) = self.kompas_api7_module.IMacroObject(border).GetPlacement()
-
-            views = doc2d.ViewsAndLayersManager.Views.View(0)
-            container = self.kompas_api7_module.IDrawingContainer(views)
-
-            macro_container = self.kompas_api7_module.IDrawingContainer(border)
-            
-            contour = container.DrawingContours.Add()
-            icontour = self.kompas_api7_module.IContour(contour)
-            
-            arr = []
-            
-            lines = macro_container.LineSegments
-            
-            contours = self.split_into_contours(lines)
-            
-            ctr = None
-            
-            for i, cont in enumerate(contours):
-                
-                ctr = cont;
-                
-                print(f"Контур {i+1}:")
-                for line in cont:
-                    print(f"  ({line.X1},{line.Y1}) → ({line.X2},{line.Y2})")
-            
-            for line in ctr:
-            
-                arr.append(line)
-
-            icontour.CopySegments(arr, False)
-            
-            contour.Update()
-            
-            equidistant = container.Equidistants.Add()
-            
-            equidistant.BaseObject = contour
-            equidistant.LeftRadius = tool_diameter/2 + offset
-            equidistant.RightRadius = tool_diameter/2 + offset
-            equidistant.Style = 6
-            equidistant.Side = 0
-            
-            equidistant.Update()
-            
-            doc2d5 = self.kompas5.TransferInterface(doc, 1, 0)
-            
-            g1 = doc2d5.ksApproximationCurve(equidistant.Reference, 0.005, False, 0, 0)
-            
-            equidistant.Side = 1
-            equidistant.Update()
-            
-            g2 = doc2d5.ksApproximationCurve(equidistant.Reference, 0.005, False, 0, 0)
-            
-            equidistant.Delete()
-            
-            g17 = self.kompas5.TransferReference(g1, doc.Reference)
-            g27 = self.kompas5.TransferReference(g2, doc.Reference)
-            
-            g171 = self.kompas_api7_module.IDrawingObject1(g17.Objects(0))
-            l1 = g171.GetCurve2D().Length
-            
-            g271 = self.kompas_api7_module.IDrawingObject1(g27.Objects(0))
-            l2 = g271.GetCurve2D().Length
-            
-            g = None
-            
-            if contour_type == "Внешний":
-                if l1 > l2:
-                    g = g17
-                    g27.Delete()
-                else:
-                    g = g27
-                    g17.Delete()
-            else:
-                if l1 < l2:
-                    g = g17
-                    g27.Delete()
-                else:
-                    g = g27
-                    g17.Delete()
-            
-            contour.Delete();
-            
-            doc2d5.ksMoveObj(g.Reference, X, Y)
-            
-            doc2d5.ksDestroyObjects(g.Reference)
-            
-            arr = container.Objects(0)
-            
-            g.AddObjects(arr)
-            
-            doc2d5.ksWriteGroupToClip(g.Reference, 1)
-            
-            doc2d5 = self.kompas5.TransferInterface(self.doc, 1, 0)
-            
-            group = doc2d5.ksReadGroupFromClip()
-            
-            doc2d5.ksStoreTmpGroup(group)
-            
-            group = self.kompas5.TransferReference(group, self.doc.Reference)
-            
-            arr = group.Objects()
-            
-            group.Clear(False)
-            group.Delete()
-            
             views = self.kompas_api7_module.IKompasDocument2D(self.doc).ViewsAndLayersManager.Views.View(0)
             container = self.kompas_api7_module.IDrawingContainer(views)
             
             macro = container.MacroObjects.Add()
-            macro.Name = "Траектория"
+            macro.Name = "Траектория границ"
             
             container = self.kompas_api7_module.IDrawingContainer(macro)
             
@@ -454,17 +350,111 @@ class KompasService:
             
             line.Update()
             
-            print(arr)
-            
             macro.Update()
+
+            (result, X, Y, angle, mirror) = self.kompas_api7_module.IMacroObject(border).GetPlacement()
+
+            views = doc2d.ViewsAndLayersManager.Views.View(0)
+            container = self.kompas_api7_module.IDrawingContainer(views)
+
+            macro_container = self.kompas_api7_module.IDrawingContainer(border)
             
-            for el in arr:
-                print(macro.AddObjects(el))
+            
+            
+            lines = macro_container.LineSegments
+            
+            contours = self.split_into_contours(lines)
+            print(contours)
+            for i, cont in enumerate(contours):
+            
+                contour = container.DrawingContours.Add()
+                icontour = self.kompas_api7_module.IContour(contour)
+            
+                arr = []
+                
+                for l in cont:
+                
+                    arr.append(l)
+                
+                icontour.CopySegments(arr, False)
+                
+                contour.Update()
+                
+                equidistant = container.Equidistants.Add()
+                
+                equidistant.BaseObject = contour
+                equidistant.LeftRadius = tool_diameter/2 + offset
+                equidistant.RightRadius = tool_diameter/2 + offset
+                equidistant.Style = 6
+                equidistant.Side = 0
+                
+                equidistant.Update()
+                
+                doc2d5 = self.kompas5.TransferInterface(doc, 1, 0)
+                
+                g1 = doc2d5.ksApproximationCurve(equidistant.Reference, 0.005, False, 0, 0)
+                
+                equidistant.Side = 1
+                equidistant.Update()
+                
+                g2 = doc2d5.ksApproximationCurve(equidistant.Reference, 0.005, False, 0, 0)
+                
+                equidistant.Delete()
+                
+                g17 = self.kompas5.TransferReference(g1, doc.Reference)
+                g27 = self.kompas5.TransferReference(g2, doc.Reference)
+                
+                g171 = self.kompas_api7_module.IDrawingObject1(g17.Objects(0))
+                l1 = g171.GetCurve2D().Length
+                
+                g271 = self.kompas_api7_module.IDrawingObject1(g27.Objects(0))
+                l2 = g271.GetCurve2D().Length
+                
+                g = None
+                
+                if contour_type == "Внешний":
+                    if l1 > l2:
+                        g = g17
+                        g27.Delete()
+                    else:
+                        g = g27
+                        g17.Delete()
+                else:
+                    if l1 < l2:
+                        g = g17
+                        g27.Delete()
+                    else:
+                        g = g27
+                        g17.Delete()
+                
+                contour.Delete();
+                
+                doc2d5.ksMoveObj(g.Reference, X, Y)
+                
+                #doc2d5.ksDestroyObjects(g.Reference)
+                
+                arr = container.Objects(0)
+                
+                g.AddObjects(arr)
+                
+                doc2d5.ksWriteGroupToClip(g.Reference, 0)
+                
+                doc2d5 = self.kompas5.TransferInterface(self.doc, 1, 0)
+                
+                group = doc2d5.ksReadGroupFromClip()
+                
+                doc2d5.ksStoreTmpGroup(group)
+                
+                group = self.kompas5.TransferReference(group, self.doc.Reference)
+                
+                arr = group.Objects()
+                print(arr)
+                macro.AddObjects(group)
             
             prop = self.property_mng.GetProperty(self.doc, "Тип")
 
             keeper = self.kompas_api7_module.IPropertyKeeper(macro)
-            keeper.SetPropertyValue(prop, "Траектрория границ", False)
+            keeper.SetPropertyValue(prop, "Траектория границ", False)
             
             line.Delete()
             
@@ -475,6 +465,214 @@ class KompasService:
         
         doc.Close(0)
         
+    def create_tracks_trajectory(self, startPoint, border, tool_diameter, line_count, overlap_percent):
+       
+        doc = self.kompas.Documents.Add(2, False)
+       
+        doc2d = self.kompas_api7_module.IKompasDocument2D(doc)
+
+        try:
+
+            views = self.kompas_api7_module.IKompasDocument2D(self.doc).ViewsAndLayersManager.Views.View(0)
+            container = self.kompas_api7_module.IDrawingContainer(views)
+            
+            macro = container.MacroObjects.Add()
+            macro.Name = "Траектория дорожек"
+            
+            container = self.kompas_api7_module.IDrawingContainer(macro)
+            
+            line = container.LineSegments.Add()
+            
+            line.X1 = 1
+            line.Y1 = 1
+            
+            line.Update()
+            
+            macro.Update()
+
+            (result, X, Y, angle, mirror) = self.kompas_api7_module.IMacroObject(border).GetPlacement()
+
+            views = doc2d.ViewsAndLayersManager.Views.View(0)
+            container = self.kompas_api7_module.IDrawingContainer(views)
+
+            macro_container = self.kompas_api7_module.IDrawingContainer(border)
+            
+            
+            
+            lines = macro_container.LineSegments
+            
+            contours = self.split_into_contours(lines)
+            print(contours)
+            for i, cont in enumerate(contours):
+            
+                contour = container.DrawingContours.Add()
+                icontour = self.kompas_api7_module.IContour(contour)
+            
+                arr = []
+                
+                for l in cont:
+                
+                    arr.append(l)
+                
+                icontour.CopySegments(arr, False)
+                
+                contour.Update()
+                
+                equidistant = container.Equidistants.Add()
+                
+                equidistant.BaseObject = contour
+                equidistant.LeftRadius = tool_diameter/2
+                equidistant.RightRadius = tool_diameter/2
+                equidistant.Style = 6
+                equidistant.Side = 0
+                
+                equidistant.Update()
+                
+                doc2d5 = self.kompas5.TransferInterface(doc, 1, 0)
+                
+                g1 = doc2d5.ksApproximationCurve(equidistant.Reference, 0.005, False, 0, 0)
+                
+                equidistant.Side = 1
+                equidistant.Update()
+                
+                g2 = doc2d5.ksApproximationCurve(equidistant.Reference, 0.005, False, 0, 0)
+                
+                equidistant.Delete()
+                
+                g17 = self.kompas5.TransferReference(g1, doc.Reference)
+                g27 = self.kompas5.TransferReference(g2, doc.Reference)
+                
+                g171 = self.kompas_api7_module.IDrawingObject1(g17.Objects(0))
+                l1 = g171.GetCurve2D().Length
+                
+                g271 = self.kompas_api7_module.IDrawingObject1(g27.Objects(0))
+                l2 = g271.GetCurve2D().Length
+                
+                g = None
+                
+                if l1 > l2:
+                    g = g17
+                    g27.Delete()
+                else:
+                    g = g27
+                    g17.Delete()
+                
+                contour.Delete();
+                
+                doc2d5.ksMoveObj(g.Reference, X, Y)
+                
+                #doc2d5.ksDestroyObjects(g.Reference)
+                
+                arr = container.Objects(0)
+                
+                g.AddObjects(arr)
+                
+                doc2d5.ksWriteGroupToClip(g.Reference, 0)
+                
+                doc2d5 = self.kompas5.TransferInterface(self.doc, 1, 0)
+                
+                group = doc2d5.ksReadGroupFromClip()
+                
+                doc2d5.ksStoreTmpGroup(group)
+                
+                group = self.kompas5.TransferReference(group, self.doc.Reference)
+                
+                arr = group.Objects()
+                print(arr)
+                macro.AddObjects(group)
+            
+            prop = self.property_mng.GetProperty(self.doc, "Тип")
+
+            keeper = self.kompas_api7_module.IPropertyKeeper(macro)
+            keeper.SetPropertyValue(prop, "Траектория дорожек", False)
+            
+            line.Delete()
+            
+            macro.Update()
+            
+        except ValueError as e:
+            QMessageBox.warning(None, "Ошибка построения", e)
+        
+        doc.Close(0)
+     
+    def create_milling_program(self, startPoint, macro, depth, overrun, feedrate):
+        
+        result = self.kompas_api7_module.IMacroObject(startPoint[0]).GetPlacement()
+        
+        dX = result[1]
+        dY = result[2]
+        
+        result = self.kompas_api7_module.IMacroObject(macro).GetPlacement()
+        
+        dX -= result[1]
+        dY -= result[2]
+        
+        contours = self.kompas_api7_module.IDrawingContainer(macro).Objects(0)
+        
+        segments = []
+        
+        ths = []
+        
+        j = 0
+        
+        for contour in contours:
+            
+            ths.append(None)
+            
+            start_new_thread(self.add_contur_segments, (contour.Reference, j, ths, self.doc.Reference, dX, dY))
+            print(j)
+            j+=1
+
+        _next = True
+        
+        while _next:
+            
+            _next = False
+            
+            for i in range(0, len(ths)):
+                if  ths[i] == None:
+                    _next = True
+                    
+            print("next")
+            
+            time.sleep(2)
+        
+        for i in range(0, len(ths)):
+        
+            segments = segments + ths[i]
+        
+        return Postprocessor.cutTrajectory(segments, depth, overrun, feedrate, 0)
+     
+    def add_contur_segments(self, contour, j, ths, doc, dX, dY):
+        
+        kompas5 = self.kompas_api5_module.KompasObject(Dispatch("Kompas.Application.5")._oleobj_.QueryInterface(self.kompas_api5_module.KompasObject.CLSID, pythoncom.IID_IDispatch))
+        
+        segments = []
+        
+        contour = kompas5.TransferReference(contour, doc)
+        
+        contour = self.kompas_api7_module.IContour(contour)
+            
+        for i in range(0, contour.Count):
+        
+            segment = contour.Segment(i)
+        
+            segment_type = segment.Type
+        
+            if segment_type == 10707:
+                
+                line = self.kompas_api7_module.IContourLineSegment(segment)
+                
+                segments.append(Line(round(line.X1 - dX, 5), round(line.Y1 - dY, 5), round(line.X2 - dX, 5), round(line.Y2 - dY, 5)))
+                
+            elif segment_type == 10708:
+            
+                arc = self.kompas_api7_module.IContourArc(segment)
+                
+                segments.append(Arc(round(arc.X1 - dX, 5), round(arc.Y1 - dY, 5), round(arc.X2 - dX, 5), round(arc.Y2 - dY, 5), round(arc.Xc, 5), round(arc.Yc, 5), arc.Direction, round(arc.Radius, 5)))
+        print(j)
+        ths[j] = segments
+     
     def split_into_contours(self, lines):
         """
         Разделяет коллекцию линий на замкнутые контуры.

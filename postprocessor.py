@@ -116,13 +116,15 @@ class Postprocessor:
                 if figure.dir:
             
                     #Круговая интерполяция по часовой стрелке
-                    out += "G2 X" + str(figure.x2) + " Y" + str(figure.y2) + " I" + str(figure.x1 - figure.ox) + " J" + str(figure.y1 - figure.oy) + "\n"
+                    #out += "G3 X" + str(figure.x2) + " Y" + str(figure.y2) + " I" + str(figure.x1 - figure.ox) + " J" + str(figure.y1 - figure.oy) + "\n"
+                    out += "G2 X" + str(figure.x2) + " Y" + str(figure.y2) + " R" + str(figure.r) + "\n"
                 
                 #Иначе
                 else:
                     
                     #Круговая интерполяция против часовой стрелке
-                    out += "G3 X" + str(figure.x2) + " Y" + str(figure.y2) + " I" + str(figure.x1 - figure.ox) + " J" + str(figure.y1 - figure.oy) + "\n"
+                    #out += "G2 X" + str(figure.x2) + " Y" + str(figure.y2) + " I" + str(figure.x1 - figure.ox) + " J" + str(figure.y1 - figure.oy) + "\n"
+                    out += "G3 X" + str(figure.x2) + " Y" + str(figure.y2) + " R" + str(figure.r) + "\n"
                
             #Запоминаем конечную точку фигуры
             fx = figure.x2
@@ -196,7 +198,7 @@ class Line: #Линия
         
 class Arc: #Дуга
     
-    def __init__(self, x1, y1, x2, y2, ox, oy, dir):
+    def __init__(self, x1, y1, x2, y2, ox, oy, dir, r):
         self.x1 = x1
         self.y1 = y1
         self.x2 = x2
@@ -204,6 +206,7 @@ class Arc: #Дуга
         self.ox = ox
         self.oy = oy
         self.dir = dir
+        self.r = r
         
 class Hole: #Отверстие
 
