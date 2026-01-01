@@ -7,7 +7,7 @@ from drillingFileReader import drillingFileReader
 from dxfFileReader import DXFReader
 from pathlib import Path
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QSettings
 from PyQt5.QtWidgets import (QMainWindow, QAction, QStatusBar, QMessageBox, QFileDialog,
                              QDialog, QVBoxLayout, QLabel, QLineEdit, QHBoxLayout, QPushButton, QTreeWidget,
                              QTreeWidgetItem, QMenu, QComboBox)
@@ -22,6 +22,7 @@ class PCBEditor(QMainWindow):
         self.tree_view = None
         self.ks_service = KompasService()
         self.initUI()
+        self.properties = QSettings("company", "pcb_editor")
 
     def initUI(self):
         self.setWindowTitle('Редактор печатных плат')
@@ -393,6 +394,7 @@ class PCBEditor(QMainWindow):
             label = QLabel(label_text)
             line_edit = QLineEdit()
             line_edit.setPlaceholderText("0.0 мм")
+            self.set_default_value(line_edit, label_text)
 
             line_edit.setValidator(validator)
 
@@ -426,6 +428,9 @@ class PCBEditor(QMainWindow):
                         raise ValueError("Некорректное число")
 
                 depth, overrun, feedrate = values
+                self.properties.setValue("depth", depth)
+                self.properties.setValue("overrun", overrun)
+                self.properties.setValue("feedrate", feedrate)
                 print(f"Введены параметры: depth={depth}, overrun={overrun}, feedrate={feedrate}")
                 program = self.ks_service.create_drilling_program(self.ks_service.find_macro_by_type("Ноль станка"), macro, depth, overrun, feedrate)
                 
@@ -448,6 +453,18 @@ class PCBEditor(QMainWindow):
         cancel_button.clicked.connect(dialog.reject)
 
         dialog.exec_()
+
+    def set_default_value(self, line_edit, label_text):
+        key_map = {
+            "Глубина": "depth",
+            "Высота перебега": "overrun",
+            "Скорость подачи": "feedrate"
+        }
+        key = key_map.get(label_text.rstrip(':'))
+        print(key)
+        value = self.properties.value(key)
+        if value is not None:
+            line_edit.setText(str(value))
 
     def show_borders_program_menu(self, macro):
         """Метод для ввода параметров фрезеровки границ"""
