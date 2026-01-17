@@ -14,6 +14,14 @@ from PyQt5.QtWidgets import (QMainWindow, QAction, QStatusBar, QMessageBox, QFil
 from kompas_service import KompasService
 
 
+from app.project_manager import ProjectManager
+from infra.settings_storage import SettingsStorage
+from ui.dialogs.border_trajectory_dialog import BorderTrajectoryDialog
+from ui.dialogs.drilling_params_dialog import DrillingParamsDialog
+from ui.dialogs.milling_params_dialog import MillingParamsDialog
+from ui.dialogs.tracks_trajectory_dialog import TracksTrajectoryDialog
+
+
 class PCBEditor(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -21,10 +29,15 @@ class PCBEditor(QMainWindow):
         self.project_name = None
         self.tree_view = None
         self.ks_service = KompasService()
-        self.initUI()
+        self.init_ui()
         self.properties = QSettings("company", "pcb_editor")
 
-    def initUI(self):
+
+        ##new
+        self.settings_storage = SettingsStorage()
+        self.project_manager = ProjectManager(self.ks_service, self.settings_storage)
+
+    def init_ui(self):
         self.setWindowTitle('Редактор печатных плат')
         self.setGeometry(100, 100, 500, 300)
 
@@ -124,7 +137,7 @@ class PCBEditor(QMainWindow):
         self.addHolesAction.triggered.connect(self.add_holes)
         fileMenu.addAction(self.addHolesAction)
         self.addHolesAction.setDisabled(True)
-        
+
         self.addMasksAction = QAction('Добавить маску', self)
         self.addMasksAction.triggered.connect(self.add_mask)
         fileMenu.addAction(self.addMasksAction)
@@ -147,7 +160,7 @@ class PCBEditor(QMainWindow):
             self.project_name = os.path.splitext(os.path.basename(file_path))[0]
             self.ks_service.open_fragment(file_path.replace(".pcbprj", ".frw"))
             self.build_project_tree(self.project_name)
-            
+
             doc = self.ks_service.doc
             doc2d = self.ks_service.kompas_api7_module.IKompasDocument2D(doc)
 
@@ -282,7 +295,7 @@ class PCBEditor(QMainWindow):
 
             self.create_point_action.setDisabled(False)
             self.set_action_enable()
-            
+
         except Exception as e:
             self.statusBar.showMessage("Произошла ошибка при создании дерева проекта")
             print("Ошибка:", str(e))
@@ -308,7 +321,7 @@ class PCBEditor(QMainWindow):
         except Exception as e:
             self.statusBar.showMessage(f"Ошибка загрузки: {str(e)}")
             print(f"Ошибка при чтении файла дорожек: {e}")
-    
+
     def add_mask(self):
         self.statusBar.showMessage("Режим добавления границ")
         file_path, _ = QFileDialog.getOpenFileName(
@@ -329,7 +342,7 @@ class PCBEditor(QMainWindow):
         except Exception as e:
             self.statusBar.showMessage(f"Ошибка загрузки: {str(e)}")
             print(f"Ошибка при чтении файла маски: {e}")
-    
+
     def add_borders(self):
         self.statusBar.showMessage("Режим добавления границ")
         file_path, _ = QFileDialog.getOpenFileName(
@@ -374,357 +387,432 @@ class PCBEditor(QMainWindow):
                 traceback.print_exc()
         self.build_project_tree(self.project_name)
 
-    def show_drill_menu(self, macro):
-        """Метод для ввода параметров отверстия"""
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Меню параметров")
-        dialog.setModal(True)
-        dialog.setFixedSize(300, 180)
-
-        layout = QVBoxLayout()
-
-        fields = []
-        labels = ["Глубина:", "Высота перебега:", "Скорость подачи:"]
-
-        validator = QDoubleValidator()
-        validator.setNotation(QDoubleValidator.StandardNotation)
-
-        for label_text in labels:
-            row = QHBoxLayout()
-            label = QLabel(label_text)
-            line_edit = QLineEdit()
-            line_edit.setPlaceholderText("0.0 мм")
-            self.set_default_value(line_edit, label_text)
-
-            line_edit.setValidator(validator)
-
-            row.addWidget(label)
-            row.addWidget(line_edit)
-            layout.addLayout(row)
-            fields.append(line_edit)
-
-        button_layout = QHBoxLayout()
-        ok_button = QPushButton("OK")
-        cancel_button = QPushButton("Отмена")
-
-        button_layout.addStretch()
-        button_layout.addWidget(ok_button)
-        button_layout.addWidget(cancel_button)
-
-        layout.addLayout(button_layout)
-        dialog.setLayout(layout)
-
-        def on_ok():
-            try:
-                values = []
-                for field in fields:
-                    text = field.text().strip()
-                    if not text:
-                        raise ValueError("Поле не может быть пустым")
-                    try:
-                        val = float(text.replace(',', '.'))
-                        values.append(val)
-                    except ValueError:
-                        raise ValueError("Некорректное число")
-
-                depth, overrun, feedrate = values
-                self.properties.setValue("depth", depth)
-                self.properties.setValue("overrun", overrun)
-                self.properties.setValue("feedrate", feedrate)
-                print(f"Введены параметры: depth={depth}, overrun={overrun}, feedrate={feedrate}")
-                program = self.ks_service.create_drilling_program(self.ks_service.find_macro_by_type("Ноль станка"), macro, depth, overrun, feedrate)
-                
-                file_path, _ = QFileDialog.getSaveFileName(
-                    self,
-                    "Сохранить файл сверловки",
-                    "",
-                    "CNC program (*.nc)"
-                )
-                
-                with open(file_path, "w") as file:
-                    file.write(program)
-                
-                dialog.accept()
-
-            except ValueError as e:
-                QMessageBox.warning(dialog, "Ошибка ввода", f"Введите корректные числа\n{e}")
-
-        ok_button.clicked.connect(on_ok)
-        cancel_button.clicked.connect(dialog.reject)
-
-        dialog.exec_()
-
-    def set_default_value(self, line_edit, label_text):
-        key_map = {
-            "Глубина": "depth",
-            "Высота перебега": "overrun",
-            "Скорость подачи": "feedrate"
-        }
-        key = key_map.get(label_text.rstrip(':'))
-        print(key)
-        value = self.properties.value(key)
-        if value is not None:
-            line_edit.setText(str(value))
-
-    def show_borders_program_menu(self, macro):
-        """Метод для ввода параметров фрезеровки границ"""
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Меню параметров")
-        dialog.setModal(True)
-        dialog.setFixedSize(300, 180)
-
-        layout = QVBoxLayout()
-
-        fields = []
-        labels = ["Глубина:", "Высота перебега:", "Скорость подачи:"]
-
-        validator = QDoubleValidator()
-        validator.setNotation(QDoubleValidator.StandardNotation)
-
-        for label_text in labels:
-            row = QHBoxLayout()
-            label = QLabel(label_text)
-            line_edit = QLineEdit()
-            line_edit.setPlaceholderText("0.0 мм")
-
-            line_edit.setValidator(validator)
-
-            row.addWidget(label)
-            row.addWidget(line_edit)
-            layout.addLayout(row)
-            fields.append(line_edit)
-
-        button_layout = QHBoxLayout()
-        ok_button = QPushButton("OK")
-        cancel_button = QPushButton("Отмена")
-
-        button_layout.addStretch()
-        button_layout.addWidget(ok_button)
-        button_layout.addWidget(cancel_button)
-
-        layout.addLayout(button_layout)
-        dialog.setLayout(layout)
-
-        def on_ok():
-            try:
-                values = []
-                for field in fields:
-                    text = field.text().strip()
-                    if not text:
-                        raise ValueError("Поле не может быть пустым")
-                    try:
-                        val = float(text.replace(',', '.'))
-                        values.append(val)
-                    except ValueError:
-                        raise ValueError("Некорректное число")
-
-                depth, overrun, feedrate = values
-                
-                print(f"Введены параметры: depth={depth}, overrun={overrun}, feedrate={feedrate}")
-                
-                program = self.ks_service.create_milling_program(self.ks_service.find_macro_by_type("Ноль станка"), macro, depth, overrun, feedrate)
-                
-                file_path, _ = QFileDialog.getSaveFileName(
-                    self,
-                    "Сохранить файл фрезеровки",
-                    "",
-                    "CNC program (*.nc)"
-                )
-                
-                with open(file_path, "w") as file:
-                    file.write(program)
-                
-                dialog.accept()
-
-            except ValueError as e:
-                QMessageBox.warning(dialog, "Ошибка ввода", f"Введите корректные числа\n{e}")
-
-        ok_button.clicked.connect(on_ok)
-        cancel_button.clicked.connect(dialog.reject)
-
-        dialog.exec_()
-
-    def show_borders_trajectory_menu(self, macro):
-        """Метод для ввода параметров траектории границ"""
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Меню параметров")
-        dialog.setModal(True)
-        dialog.setFixedSize(300, 180)
-
-        layout = QVBoxLayout()
-
-        fields = []
-        labels = ["Диаметр инструмента:", "Отступ:"]
-        contour_types = ["Внешний", "Внутренний"]
-
-        validator = QDoubleValidator()
-        validator.setNotation(QDoubleValidator.StandardNotation)
-
-        for label_text in labels:
-            row = QHBoxLayout()
-            label = QLabel(label_text)
-            line_edit = QLineEdit()
-            line_edit.setPlaceholderText("0.0 мм")
-            line_edit.setValidator(validator)
-
-            row.addWidget(label)
-            row.addWidget(line_edit)
-            layout.addLayout(row)
-            fields.append(line_edit)
-
-        row = QHBoxLayout()
-        label = QLabel("Тип контура:")
-        combo = QComboBox()
-        combo.addItems(contour_types)
-        row.addWidget(label)
-        row.addWidget(combo)
-        layout.addLayout(row)
-        fields.append(combo)
-
-        button_layout = QHBoxLayout()
-        ok_button = QPushButton("OK")
-        cancel_button = QPushButton("Отмена")
-
-        button_layout.addStretch()
-        button_layout.addWidget(ok_button)
-        button_layout.addWidget(cancel_button)
-
-        layout.addLayout(button_layout)
-        dialog.setLayout(layout)
-
-        def on_ok():
-            try:
-
-                tool_diameter_text = fields[0].text().strip()
-                offset_text = fields[1].text().strip()
-
-                if not tool_diameter_text or not offset_text:
-                    raise ValueError("Поля 'Диаметр инструмента' и 'Отступ' не могут быть пустыми")
-
-                tool_diameter = float(tool_diameter_text.replace(',', '.'))
-                offset = float(offset_text.replace(',', '.'))
-                contour_type = fields[2].currentText()
-
-                print(f"Введены параметры: tool_diameter={tool_diameter}, offset={offset}, contour_type={contour_type}")
-                
-                self.ks_service.create_border_trajectory(self.ks_service.find_macro_by_type("Ноль станка"), macro, tool_diameter, offset, contour_type)
-                
-                # program = self.ks_service.create_drilling_program(self.ks_service.find_macro_by_type("Ноль станка"), macro, depth, overrun, feedrate)
-                
-                # file_path, _ = QFileDialog.getSaveFileName(
-                #     self,
-                #     "Сохранить файл сверловки",
-                #     "",
-                #     "CNC program (*.nc)"
-                # )
-                #
-                # with open(file_path, "w") as file:
-                #     file.write(program)
-                
-                dialog.accept()
-
-            except ValueError as e:
-                QMessageBox.warning(dialog, "Ошибка ввода", f"Введите корректные числа\n{e}")
-
-        ok_button.clicked.connect(on_ok)
-        cancel_button.clicked.connect(dialog.reject)
-
-        dialog.exec_()
-
-    def show_tracks_trajectory_menu(self, macro):
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Меню параметров")
-        dialog.setModal(True)
-        dialog.setFixedSize(300, 180)
-
-        layout = QVBoxLayout()
-        fields = []
-
-        # Диаметр инструмента
-        validator_diam = QDoubleValidator()
-        validator_diam.setNotation(QDoubleValidator.StandardNotation)
-
-        row1 = QHBoxLayout()
-        label1 = QLabel("Диаметр инструмента:")
-        line_edit1 = QLineEdit()
-        line_edit1.setPlaceholderText("0.0 мм")
-        line_edit1.setValidator(validator_diam)
-        row1.addWidget(label1)
-        row1.addWidget(line_edit1)
-        layout.addLayout(row1)
-        fields.append(line_edit1)
-
-        # Количество линий
-        validator_count = QIntValidator(1, 999)  # минимум 1, максимум 999
-
-        row2 = QHBoxLayout()
-        label2 = QLabel("Количество линий:")
-        line_edit2 = QLineEdit()
-        line_edit2.setPlaceholderText("1")
-        line_edit2.setValidator(validator_count)
-        row2.addWidget(label2)
-        row2.addWidget(line_edit2)
-        layout.addLayout(row2)
-        fields.append(line_edit2)
-
-        # Процент перекрытия
-        validator_overlap = QDoubleValidator(0.0, 100.0, 2)
-        validator_overlap.setNotation(QDoubleValidator.StandardNotation)
-
-        row3 = QHBoxLayout()
-        label3 = QLabel("Процент перекрытия:")
-        line_edit3 = QLineEdit()
-        line_edit3.setPlaceholderText("0.0 %")
-        line_edit3.setValidator(validator_overlap)
-        row3.addWidget(label3)
-        row3.addWidget(line_edit3)
-        layout.addLayout(row3)
-        fields.append(line_edit3)
-
-        button_layout = QHBoxLayout()
-        button_layout.addStretch()
-        ok_button = QPushButton("OK")
-        cancel_button = QPushButton("Отмена")
-        button_layout.addWidget(ok_button)
-        button_layout.addWidget(cancel_button)
-        layout.addLayout(button_layout)
-
-        dialog.setLayout(layout)
-
-        def on_ok():
-            try:
-                tool_diam_text = fields[0].text().strip()
-                count_text = fields[1].text().strip()
-                overlap_text = fields[2].text().strip()
-
-                if not tool_diam_text or not count_text or not overlap_text:
-                    QMessageBox.warning(dialog, "Ошибка", "Заполните все поля!")
-                    return
-
-                tool_diameter = float(tool_diam_text.replace(',', '.'))
-                line_count = int(count_text)
-                overlap_percent = float(overlap_text.replace(',', '.'))
-
-                if tool_diameter <= 0:
-                    raise ValueError("Диаметр инструмента должен быть > 0")
-                if overlap_percent < 0 or overlap_percent > 100:
-                    raise ValueError("Процент перекрытия должен быть от 0 до 100")
-
-                print(f"Параметры дорожек: диаметр={tool_diameter}, линий={line_count}, перекрытие={overlap_percent}%")
-
-                self.ks_service.create_tracks_trajectory(self.ks_service.find_macro_by_type("Ноль станка"), macro, tool_diameter, line_count, overlap_percent)
-
-                dialog.accept()
-
-            except ValueError as e:
-                QMessageBox.warning(dialog, "Ошибка ввода", f"Некорректное значение:\n{e}")
-            except Exception as e:
-                QMessageBox.critical(dialog, "Ошибка", f"Не удалось обработать параметры:\n{str(e)}")
-
-        ok_button.clicked.connect(on_ok)
-        cancel_button.clicked.connect(dialog.reject)
-
-        dialog.exec_()
+    # def show_drill_menu(self, macro):
+    #     """Метод для ввода параметров отверстия"""
+    #     dialog = QDialog(self)
+    #     dialog.setWindowTitle("Меню параметров")
+    #     dialog.setModal(True)
+    #     dialog.setFixedSize(300, 180)
+    #
+    #     layout = QVBoxLayout()
+    #
+    #     fields = []
+    #     labels = ["Глубина:", "Высота перебега:", "Скорость подачи:"]
+    #
+    #     validator = QDoubleValidator()
+    #     validator.setNotation(QDoubleValidator.StandardNotation)
+    #
+    #     for label_text in labels:
+    #         row = QHBoxLayout()
+    #         label = QLabel(label_text)
+    #         line_edit = QLineEdit()
+    #         line_edit.setPlaceholderText("0.0 мм")
+    #         self.set_default_value(line_edit, label_text)
+    #
+    #         line_edit.setValidator(validator)
+    #
+    #         row.addWidget(label)
+    #         row.addWidget(line_edit)
+    #         layout.addLayout(row)
+    #         fields.append(line_edit)
+    #
+    #     button_layout = QHBoxLayout()
+    #     ok_button = QPushButton("OK")
+    #     cancel_button = QPushButton("Отмена")
+    #
+    #     button_layout.addStretch()
+    #     button_layout.addWidget(ok_button)
+    #     button_layout.addWidget(cancel_button)
+    #
+    #     layout.addLayout(button_layout)
+    #     dialog.setLayout(layout)
+    #
+    #     def on_ok():
+    #         try:
+    #             values = []
+    #             for field in fields:
+    #                 text = field.text().strip()
+    #                 if not text:
+    #                     raise ValueError("Поле не может быть пустым")
+    #                 try:
+    #                     val = float(text.replace(',', '.'))
+    #                     values.append(val)
+    #                 except ValueError:
+    #                     raise ValueError("Некорректное число")
+    #
+    #             depth, overrun, feedrate = values
+    #             self.properties.setValue("depth", depth)
+    #             self.properties.setValue("overrun", overrun)
+    #             self.properties.setValue("feedrate", feedrate)
+    #             print(f"Введены параметры: depth={depth}, overrun={overrun}, feedrate={feedrate}")
+    #             program = self.ks_service.create_drilling_program(self.ks_service.find_macro_by_type("Ноль станка"), macro, depth, overrun, feedrate)
+    #
+    #             file_path, _ = QFileDialog.getSaveFileName(
+    #                 self,
+    #                 "Сохранить файл сверловки",
+    #                 "",
+    #                 "CNC program (*.nc)"
+    #             )
+    #
+    #             with open(file_path, "w") as file:
+    #                 file.write(program)
+    #
+    #             dialog.accept()
+    #
+    #         except ValueError as e:
+    #             QMessageBox.warning(dialog, "Ошибка ввода", f"Введите корректные числа\n{e}")
+    #
+    #     ok_button.clicked.connect(on_ok)
+    #     cancel_button.clicked.connect(dialog.reject)
+    #
+    #     dialog.exec_()
+
+    def show_drill_menu(self, macro_id: str):
+        """Вызывается из контекстного меню для 'Отверстия'"""
+        try:
+            defaults = self.settings_storage.load_drilling_defaults()
+
+            params = DrillingParamsDialog.get_drilling_params(defaults, self)
+            if not params:
+                return
+
+            self.settings_storage.save_drilling_defaults(params)
+
+            program = self.project_manager.generate_drilling_program(macro_id, params)
+
+            saved = self.project_manager.save_program_to_file(program, self)
+            if saved:
+                self.statusBar.showMessage("Управляющая программа сохранена")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Не удалось создать УП:\n{str(e)}")
+            traceback.print_exc()
+
+    # def set_default_value(self, line_edit, label_text):
+    #     key_map = {
+    #         "Глубина": "depth",
+    #         "Высота перебега": "overrun",
+    #         "Скорость подачи": "feedrate"
+    #     }
+    #     key = key_map.get(label_text.rstrip(':'))
+    #     print(key)
+    #     value = self.properties.value(key)
+    #     if value is not None:
+    #         line_edit.setText(str(value))
+
+    # def show_borders_program_menu(self, macro):
+    #     """Метод для ввода параметров фрезеровки границ"""
+    #     dialog = QDialog(self)
+    #     dialog.setWindowTitle("Меню параметров")
+    #     dialog.setModal(True)
+    #     dialog.setFixedSize(300, 180)
+    #
+    #     layout = QVBoxLayout()
+    #
+    #     fields = []
+    #     labels = ["Глубина:", "Высота перебега:", "Скорость подачи:"]
+    #
+    #     validator = QDoubleValidator()
+    #     validator.setNotation(QDoubleValidator.StandardNotation)
+    #
+    #     for label_text in labels:
+    #         row = QHBoxLayout()
+    #         label = QLabel(label_text)
+    #         line_edit = QLineEdit()
+    #         line_edit.setPlaceholderText("0.0 мм")
+    #
+    #         line_edit.setValidator(validator)
+    #
+    #         row.addWidget(label)
+    #         row.addWidget(line_edit)
+    #         layout.addLayout(row)
+    #         fields.append(line_edit)
+    #
+    #     button_layout = QHBoxLayout()
+    #     ok_button = QPushButton("OK")
+    #     cancel_button = QPushButton("Отмена")
+    #
+    #     button_layout.addStretch()
+    #     button_layout.addWidget(ok_button)
+    #     button_layout.addWidget(cancel_button)
+    #
+    #     layout.addLayout(button_layout)
+    #     dialog.setLayout(layout)
+    #
+    #     def on_ok():
+    #         try:
+    #             values = []
+    #             for field in fields:
+    #                 text = field.text().strip()
+    #                 if not text:
+    #                     raise ValueError("Поле не может быть пустым")
+    #                 try:
+    #                     val = float(text.replace(',', '.'))
+    #                     values.append(val)
+    #                 except ValueError:
+    #                     raise ValueError("Некорректное число")
+    #
+    #             depth, overrun, feedrate = values
+    #
+    #             print(f"Введены параметры: depth={depth}, overrun={overrun}, feedrate={feedrate}")
+    #
+    #             program = self.ks_service.create_milling_program(self.ks_service.find_macro_by_type("Ноль станка"), macro, depth, overrun, feedrate)
+    #
+    #             file_path, _ = QFileDialog.getSaveFileName(
+    #                 self,
+    #                 "Сохранить файл фрезеровки",
+    #                 "",
+    #                 "CNC program (*.nc)"
+    #             )
+    #
+    #             with open(file_path, "w") as file:
+    #                 file.write(program)
+    #
+    #             dialog.accept()
+    #
+    #         except ValueError as e:
+    #             QMessageBox.warning(dialog, "Ошибка ввода", f"Введите корректные числа\n{e}")
+    #
+    #     ok_button.clicked.connect(on_ok)
+    #     cancel_button.clicked.connect(dialog.reject)
+    #
+    #     dialog.exec_()
+
+    def show_borders_program_menu(self, macro_id: str):
+        defaults = self.project_manager.settings.load_milling_defaults()
+
+        params = MillingParamsDialog.get_milling_params(defaults, self)
+        if not params:
+            return
+
+        self.project_manager.settings.save_milling_defaults(params)
+
+        try:
+            program = self.project_manager.generate_milling_program(macro_id, params)
+
+            saved = self.project_manager.save_program_to_file(program, self)
+            if saved:
+                self.statusBar.showMessage("УП фрезеровки сохранена")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Не удалось создать УП:\n{str(e)}")
+            traceback.print_exc()
+
+    # def show_borders_trajectory_menu(self, macro):
+    #     """Метод для ввода параметров траектории границ"""
+    #     dialog = QDialog(self)
+    #     dialog.setWindowTitle("Меню параметров")
+    #     dialog.setModal(True)
+    #     dialog.setFixedSize(300, 180)
+    #
+    #     layout = QVBoxLayout()
+    #
+    #     fields = []
+    #     labels = ["Диаметр инструмента:", "Отступ:"]
+    #     contour_types = ["Внешний", "Внутренний"]
+    #
+    #     validator = QDoubleValidator()
+    #     validator.setNotation(QDoubleValidator.StandardNotation)
+    #
+    #     for label_text in labels:
+    #         row = QHBoxLayout()
+    #         label = QLabel(label_text)
+    #         line_edit = QLineEdit()
+    #         line_edit.setPlaceholderText("0.0 мм")
+    #         line_edit.setValidator(validator)
+    #
+    #         row.addWidget(label)
+    #         row.addWidget(line_edit)
+    #         layout.addLayout(row)
+    #         fields.append(line_edit)
+    #
+    #     row = QHBoxLayout()
+    #     label = QLabel("Тип контура:")
+    #     combo = QComboBox()
+    #     combo.addItems(contour_types)
+    #     row.addWidget(label)
+    #     row.addWidget(combo)
+    #     layout.addLayout(row)
+    #     fields.append(combo)
+    #
+    #     button_layout = QHBoxLayout()
+    #     ok_button = QPushButton("OK")
+    #     cancel_button = QPushButton("Отмена")
+    #
+    #     button_layout.addStretch()
+    #     button_layout.addWidget(ok_button)
+    #     button_layout.addWidget(cancel_button)
+    #
+    #     layout.addLayout(button_layout)
+    #     dialog.setLayout(layout)
+    #
+    #     def on_ok():
+    #         try:
+    #
+    #             tool_diameter_text = fields[0].text().strip()
+    #             offset_text = fields[1].text().strip()
+    #
+    #             if not tool_diameter_text or not offset_text:
+    #                 raise ValueError("Поля 'Диаметр инструмента' и 'Отступ' не могут быть пустыми")
+    #
+    #             tool_diameter = float(tool_diameter_text.replace(',', '.'))
+    #             offset = float(offset_text.replace(',', '.'))
+    #             contour_type = fields[2].currentText()
+    #
+    #             print(f"Введены параметры: tool_diameter={tool_diameter}, offset={offset}, contour_type={contour_type}")
+    #
+    #             self.ks_service.create_border_trajectory(self.ks_service.find_macro_by_type("Ноль станка"), macro, tool_diameter, offset, contour_type)
+    #
+    #             # program = self.ks_service.create_drilling_program(self.ks_service.find_macro_by_type("Ноль станка"), macro, depth, overrun, feedrate)
+    #
+    #             # file_path, _ = QFileDialog.getSaveFileName(
+    #             #     self,
+    #             #     "Сохранить файл сверловки",
+    #             #     "",
+    #             #     "CNC program (*.nc)"
+    #             # )
+    #             #
+    #             # with open(file_path, "w") as file:
+    #             #     file.write(program)
+    #
+    #             dialog.accept()
+    #
+    #         except ValueError as e:
+    #             QMessageBox.warning(dialog, "Ошибка ввода", f"Введите корректные числа\n{e}")
+    #
+    #     ok_button.clicked.connect(on_ok)
+    #     cancel_button.clicked.connect(dialog.reject)
+    #
+    #     dialog.exec_()
+
+    def show_borders_trajectory_menu(self, macro_id: str):
+        defaults = self.project_manager.settings.load_border_defaults()
+
+        params = BorderTrajectoryDialog.get_border_trajectory_params(self, defaults)
+        if not params:
+            return
+
+        self.project_manager.settings.save_border_defaults(params)
+
+        try:
+            self.project_manager.create_border_trajectory(macro_id, params)
+            self.refresh_tree()
+            self.statusBar.showMessage("Траектория границ создана")
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Не удалось создать траекторию:\n{str(e)}")
+            traceback.print_exc()
+
+    # def show_tracks_trajectory_menu(self, macro):
+    #     dialog = QDialog(self)
+    #     dialog.setWindowTitle("Меню параметров")
+    #     dialog.setModal(True)
+    #     dialog.setFixedSize(300, 180)
+    #
+    #     layout = QVBoxLayout()
+    #     fields = []
+    #
+    #     # Диаметр инструмента
+    #     validator_diam = QDoubleValidator()
+    #     validator_diam.setNotation(QDoubleValidator.StandardNotation)
+    #
+    #     row1 = QHBoxLayout()
+    #     label1 = QLabel("Диаметр инструмента:")
+    #     line_edit1 = QLineEdit()
+    #     line_edit1.setPlaceholderText("0.0 мм")
+    #     line_edit1.setValidator(validator_diam)
+    #     row1.addWidget(label1)
+    #     row1.addWidget(line_edit1)
+    #     layout.addLayout(row1)
+    #     fields.append(line_edit1)
+    #
+    #     # Количество линий
+    #     validator_count = QIntValidator(1, 999)  # минимум 1, максимум 999
+    #
+    #     row2 = QHBoxLayout()
+    #     label2 = QLabel("Количество линий:")
+    #     line_edit2 = QLineEdit()
+    #     line_edit2.setPlaceholderText("1")
+    #     line_edit2.setValidator(validator_count)
+    #     row2.addWidget(label2)
+    #     row2.addWidget(line_edit2)
+    #     layout.addLayout(row2)
+    #     fields.append(line_edit2)
+    #
+    #     # Процент перекрытия
+    #     validator_overlap = QDoubleValidator(0.0, 100.0, 2)
+    #     validator_overlap.setNotation(QDoubleValidator.StandardNotation)
+    #
+    #     row3 = QHBoxLayout()
+    #     label3 = QLabel("Процент перекрытия:")
+    #     line_edit3 = QLineEdit()
+    #     line_edit3.setPlaceholderText("0.0 %")
+    #     line_edit3.setValidator(validator_overlap)
+    #     row3.addWidget(label3)
+    #     row3.addWidget(line_edit3)
+    #     layout.addLayout(row3)
+    #     fields.append(line_edit3)
+    #
+    #     button_layout = QHBoxLayout()
+    #     button_layout.addStretch()
+    #     ok_button = QPushButton("OK")
+    #     cancel_button = QPushButton("Отмена")
+    #     button_layout.addWidget(ok_button)
+    #     button_layout.addWidget(cancel_button)
+    #     layout.addLayout(button_layout)
+    #
+    #     dialog.setLayout(layout)
+    #
+    #     def on_ok():
+    #         try:
+    #             tool_diam_text = fields[0].text().strip()
+    #             count_text = fields[1].text().strip()
+    #             overlap_text = fields[2].text().strip()
+    #
+    #             if not tool_diam_text or not count_text or not overlap_text:
+    #                 QMessageBox.warning(dialog, "Ошибка", "Заполните все поля!")
+    #                 return
+    #
+    #             tool_diameter = float(tool_diam_text.replace(',', '.'))
+    #             line_count = int(count_text)
+    #             overlap_percent = float(overlap_text.replace(',', '.'))
+    #
+    #             if tool_diameter <= 0:
+    #                 raise ValueError("Диаметр инструмента должен быть > 0")
+    #             if overlap_percent < 0 or overlap_percent > 100:
+    #                 raise ValueError("Процент перекрытия должен быть от 0 до 100")
+    #
+    #             print(f"Параметры дорожек: диаметр={tool_diameter}, линий={line_count}, перекрытие={overlap_percent}%")
+    #
+    #             self.ks_service.create_tracks_trajectory(self.ks_service.find_macro_by_type("Ноль станка"), macro, tool_diameter, line_count, overlap_percent)
+    #
+    #             dialog.accept()
+    #
+    #         except ValueError as e:
+    #             QMessageBox.warning(dialog, "Ошибка ввода", f"Некорректное значение:\n{e}")
+    #         except Exception as e:
+    #             QMessageBox.critical(dialog, "Ошибка", f"Не удалось обработать параметры:\n{str(e)}")
+    #
+    #     ok_button.clicked.connect(on_ok)
+    #     cancel_button.clicked.connect(dialog.reject)
+    #
+    #     dialog.exec_()
+
+    def show_tracks_trajectory_menu(self, macro_id: str):
+        defaults = self.project_manager.settings.load_tracks_defaults()
+
+        params = TracksTrajectoryDialog.get_track_trajectory_params(self, defaults)
+        if not params:
+            return
+
+        self.project_manager.settings.save_tracks_defaults(params)
+
+        try:
+            self.project_manager.create_tracks_trajectory(macro_id, params)
+            self.refresh_tree()
+            self.statusBar.showMessage("Траектория дорожек создана")
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Не удалось создать траекторию:\n{str(e)}")
+            traceback.print_exc()
 
     def create_start_point(self):
         self.ks_service.create_start_point()
