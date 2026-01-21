@@ -18,7 +18,7 @@ class MillingParamsDialog(QDialog):
         values = [default_params.depth, default_params.overrun, default_params.feedrate]
 
         self.fields = []
-        validator = QDoubleValidator(0.0, 100.0, 2)
+        validator = QDoubleValidator(-100.0, 100.0, 2)
         validator.setNotation(QDoubleValidator.StandardNotation)
 
         for label, value in zip(labels, values):
