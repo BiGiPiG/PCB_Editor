@@ -255,10 +255,10 @@ class KompasService:
             
             lineSegment.Style = 2
             
-            lineSegment.X1 = line.x1
-            lineSegment.Y1 = line.y1
-            lineSegment.X2 = line.x2
-            lineSegment.Y2 = line.y2
+            lineSegment.X1 = line.X1
+            lineSegment.Y1 = line.Y1
+            lineSegment.X2 = line.X2
+            lineSegment.Y2 = line.Y2
             
             lineSegment.Update()
         
@@ -301,6 +301,138 @@ class KompasService:
 
         keeper = self.kompas_api7_module.IPropertyKeeper(macro)
         keeper.SetPropertyValue(prop, "Отверстия", False)
+        
+    def create_mask_trajectory(self, startPoint, mask, offset):
+    
+        doc = self.kompas.Documents.Add(2, False)
+        
+        tempDoc = self.kompas.Documents.Add(2, True)
+       
+        doc2d = self.kompas_api7_module.IKompasDocument2D(doc)
+
+        try:
+
+            views = self.kompas_api7_module.IKompasDocument2D(tempDoc).ViewsAndLayersManager.Views.View(0)
+            container = self.kompas_api7_module.IDrawingContainer(views)
+            
+            macro = container.MacroObjects.Add()
+            macro.Name = "Траектория маски"
+            
+            container = self.kompas_api7_module.IDrawingContainer(macro)
+            
+            line = container.LineSegments.Add()
+            
+            line.X1 = 1
+            line.Y1 = 1
+            
+            line.Update()
+            
+            macro.Update()
+
+            (result, X, Y, angle, mirror) = self.kompas_api7_module.IMacroObject(mask).GetPlacement()
+
+            views = doc2d.ViewsAndLayersManager.Views.View(0)
+            container = self.kompas_api7_module.IDrawingContainer(views)
+
+            macro_container = self.kompas_api7_module.IDrawingContainer(mask)
+            
+            lines = macro_container.LineSegments
+            
+            contours = self.split_into_contours(lines)
+            print(contours)
+            for i, cont in enumerate(contours):
+            
+                contour = container.DrawingContours.Add()
+                icontour = self.kompas_api7_module.IContour(contour)
+            
+                arr = []
+                
+                for l in cont:
+                
+                    arr.append(l)
+                
+                icontour.CopySegments(arr, False)
+                
+                contour.Update()
+                
+                equidistant = container.Equidistants.Add()
+                
+                equidistant.BaseObject = contour
+                equidistant.LeftRadius = offset
+                equidistant.RightRadius = offset
+                equidistant.Style = 6
+                equidistant.Side = 0
+                
+                equidistant.Update()
+                
+                doc2d5 = self.kompas5.TransferInterface(doc, 1, 0)
+                
+                g1 = doc2d5.ksApproximationCurve(equidistant.Reference, 0.005, False, 0, 0)
+                
+                equidistant.Side = 1
+                equidistant.Update()
+                
+                g2 = doc2d5.ksApproximationCurve(equidistant.Reference, 0.005, False, 0, 0)
+                
+                equidistant.Delete()
+                
+                g17 = self.kompas5.TransferReference(g1, doc.Reference)
+                g27 = self.kompas5.TransferReference(g2, doc.Reference)
+                
+                g171 = self.kompas_api7_module.IDrawingObject1(g17.Objects(0))
+                l1 = g171.GetCurve2D().Length
+                
+                g271 = self.kompas_api7_module.IDrawingObject1(g27.Objects(0))
+                l2 = g271.GetCurve2D().Length
+                
+                g = None
+                
+                if l1 > l2:
+                    g = g17
+                    g27.Delete()
+                else:
+                    g = g27
+                    g17.Delete()
+                
+                contour.Delete();
+                
+                doc2d5.ksMoveObj(g.Reference, X, Y)
+                
+                #doc2d5.ksDestroyObjects(g.Reference)
+                
+                arr = container.Objects(0)
+                
+                g.AddObjects(arr)
+                
+                doc2d5.ksWriteGroupToClip(g.Reference, 0)
+                
+                doc2d5 = self.kompas5.TransferInterface(tempDoc, 1, 0)
+                
+                group = doc2d5.ksReadGroupFromClip()
+                
+                doc2d5.ksStoreTmpGroup(group)
+                
+                group = self.kompas5.TransferReference(group, tempDoc.Reference)
+                
+                arr = group.Objects()
+                print(arr)
+                macro.AddObjects(group)
+            
+            prop = self.property_mng.GetProperty(tempDoc, "Тип")
+
+            keeper = self.kompas_api7_module.IPropertyKeeper(macro)
+            keeper.SetPropertyValue(prop, "Траектория маски", False)
+            
+            line.Delete()
+            
+            macro.Update()
+            
+        except ValueError as e:
+            QMessageBox.warning(None, "Ошибка построения", e)
+        
+        border = self.find_macro_by_type("Границы")
+        
+        doc.Close(0)
         
     def create_drilling_program(self, startPoint, points, depth, overrun, feedrate):
         
@@ -620,7 +752,7 @@ class KompasService:
             ths.append(None)
             
             start_new_thread(self.add_contur_segments, (contour.Reference, j, ths, self.doc.Reference, dX, dY))
-            print(j)
+            
             j+=1
 
         _next = True
@@ -632,8 +764,6 @@ class KompasService:
             for i in range(0, len(ths)):
                 if  ths[i] == None:
                     _next = True
-                    
-            print("next")
             
             time.sleep(2)
         
@@ -670,7 +800,7 @@ class KompasService:
                 arc = self.kompas_api7_module.IContourArc(segment)
                 
                 segments.append(Arc(round(arc.X1 - dX, 5), round(arc.Y1 - dY, 5), round(arc.X2 - dX, 5), round(arc.Y2 - dY, 5), round(arc.Xc, 5), round(arc.Yc, 5), arc.Direction, round(arc.Radius, 5)))
-        print(j)
+        
         ths[j] = segments
      
     def split_into_contours(self, lines):
