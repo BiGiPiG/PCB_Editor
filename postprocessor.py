@@ -16,8 +16,8 @@ class Postprocessor:
         out += "M3\n" 
         
         #Запоминаем начальные кординаты
-        fx = contur[0].x1
-        fy = contur[0].y1
+        fx = contur[0].X1
+        fy = contur[0].Y1
     
         out += "G0 X" + str(fx) + " Y" + str(fy) + "\n" #Переходим в начало траектории
     
@@ -29,10 +29,10 @@ class Postprocessor:
         for figure in contur:
             
             #Если начало новой фигуры не совпадает с предыдущей
-            if figure.x1 != fx or figure.y1 != fy:
+            if figure.X1 != fx or figure.Y1 != fy:
             
                 out += "G0 Z" + str(overrun) + "\n" #Поднимаемся на безопасную высоту
-                out += "G0 X" + str(figure.x1) + " Y" + str(figure.y1) + "\n" # Переходим к началу новой фигуры
+                out += "G0 X" + str(figure.X1) + " Y" + str(figure.Y1) + "\n" # Переходим к началу новой фигуры
                 out += "G0 Z1\n" #Опускаемся к обрабатываемому материалу
                 out += "G1 Z" + str(depth) + "\n" #Врезаемся в заготовку
             
@@ -40,7 +40,7 @@ class Postprocessor:
             if isinstance(figure, Line):
                 
                 #Линейная интерполяция
-                out += "G1 X" + str(figure.x2) + " Y" + str(figure.y2) + "\n"
+                out += "G1 X" + str(figure.X2) + " Y" + str(figure.Y2) + "\n"
             
             #Если фигура - дуга
             if isinstance(figure, Arc):
@@ -49,17 +49,17 @@ class Postprocessor:
                 if figure.dir:
             
                     #Круговая интерполяция по часовой стрелке
-                    out += "G2 X" + str(figure.x2) + " Y" + str(figure.y2) + " I" + str(figure.x1 - figure.ox) + " J" + str(figure.y1 - figure.oy) + "\n"
+                    out += "G2 X" + str(figure.X2) + " Y" + str(figure.Y2) + " I" + str(figure.X1 - figure.ox) + " J" + str(figure.Y1 - figure.oy) + "\n"
                 
                 #Иначе
                 else:
                     
                     #Круговая интерполяция против часовой стрелке
-                    out += "G3 X" + str(figure.x2) + " Y" + str(figure.y2) + " I" + str(figure.x1 - figure.ox) + " J" + str(figure.y1 - figure.oy) + "\n"
+                    out += "G3 X" + str(figure.X2) + " Y" + str(figure.Y2) + " I" + str(figure.X1 - figure.ox) + " J" + str(figure.Y1 - figure.oy) + "\n"
                
             #Запоминаем конечную точку фигуры
-            fx = figure.x2
-            fy = figure.y2
+            fx = figure.X2
+            fy = figure.Y2
     
         out += "G0 Z15\n" #Поднимаемся на безопасную высоту
     
@@ -83,8 +83,8 @@ class Postprocessor:
         out += "M3\n" 
         
         #Запоминаем начальные кординаты
-        fx = contur[0].x1
-        fy = contur[0].y1
+        fx = contur[0].X1
+        fy = contur[0].Y1
     
         out += "G0 X" + str(fx) + " Y" + str(fy) + "\n" #Переходим в начало траектории
     
@@ -96,10 +96,10 @@ class Postprocessor:
         for figure in contur:
             
             #Если начало новой фигуры не совпадает с предыдущей
-            if figure.x1 != fx or figure.y1 != fy:
+            if figure.X1 != fx or figure.Y1 != fy:
             
                 out += "G0 Z" + str(overrun) + "\n" #Поднимаемся на безопасную высоту
-                out += "G0 X" + str(figure.x1) + " Y" + str(figure.y1) + "\n" # Переходим к началу новой фигуры
+                out += "G0 X" + str(figure.X1) + " Y" + str(figure.Y1) + "\n" # Переходим к началу новой фигуры
                 out += "G0 Z1\n" #Опускаемся к обрабатываемому материалу
                 out += "G1 Z" + str(depth) + "\n" #Врезаемся в заготовку
             
@@ -107,7 +107,7 @@ class Postprocessor:
             if isinstance(figure, Line):
                 
                 #Линейная интерполяция
-                out += "G1 X" + str(figure.x2) + " Y" + str(figure.y2) + "\n"
+                out += "G1 X" + str(figure.X2) + " Y" + str(figure.Y2) + "\n"
             
             #Если фигура - дуга
             if isinstance(figure, Arc):
@@ -116,19 +116,19 @@ class Postprocessor:
                 if figure.dir:
             
                     #Круговая интерполяция по часовой стрелке
-                    #out += "G3 X" + str(figure.x2) + " Y" + str(figure.y2) + " I" + str(figure.x1 - figure.ox) + " J" + str(figure.y1 - figure.oy) + "\n"
-                    out += "G2 X" + str(figure.x2) + " Y" + str(figure.y2) + " R" + str(figure.r) + "\n"
+                    #out += "G3 X" + str(figure.X2) + " Y" + str(figure.Y2) + " I" + str(figure.X1 - figure.ox) + " J" + str(figure.Y1 - figure.oy) + "\n"
+                    out += "G2 X" + str(figure.X2) + " Y" + str(figure.Y2) + " R" + str(figure.r) + "\n"
                 
                 #Иначе
                 else:
                     
                     #Круговая интерполяция против часовой стрелке
-                    #out += "G2 X" + str(figure.x2) + " Y" + str(figure.y2) + " I" + str(figure.x1 - figure.ox) + " J" + str(figure.y1 - figure.oy) + "\n"
-                    out += "G3 X" + str(figure.x2) + " Y" + str(figure.y2) + " R" + str(figure.r) + "\n"
+                    #out += "G2 X" + str(figure.X2) + " Y" + str(figure.Y2) + " I" + str(figure.X1 - figure.ox) + " J" + str(figure.Y1 - figure.oy) + "\n"
+                    out += "G3 X" + str(figure.X2) + " Y" + str(figure.Y2) + " R" + str(figure.r) + "\n"
                
             #Запоминаем конечную точку фигуры
-            fx = figure.x2
-            fy = figure.y2
+            fx = figure.X2
+            fy = figure.Y2
     
         out += "G0 Z15\n" #Поднимаемся на безопасную высоту
     
@@ -190,19 +190,19 @@ class Postprocessor:
 
 class Line: #Линия
     
-    def __init__(self, x1, y1, x2, y2):
-        self.x1 = x1
-        self.y1 = y1
-        self.x2 = x2
-        self.y2 = y2
+    def __init__(self, X1, Y1, X2, Y2):
+        self.X1 = X1
+        self.Y1 = Y1
+        self.X2 = X2
+        self.Y2 = Y2
         
 class Arc: #Дуга
     
-    def __init__(self, x1, y1, x2, y2, ox, oy, dir, r):
-        self.x1 = x1
-        self.y1 = y1
-        self.x2 = x2
-        self.y2 = y2
+    def __init__(self, X1, Y1, X2, Y2, ox, oy, dir, r):
+        self.X1 = X1
+        self.Y1 = Y1
+        self.X2 = X2
+        self.Y2 = Y2
         self.ox = ox
         self.oy = oy
         self.dir = dir
