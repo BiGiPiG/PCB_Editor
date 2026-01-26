@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import QFileDialog
 from domain.parameters import DrillingParams, TracksTrajectoryParams, BorderTrajectoryParams, MillingParams
+from typing import List, Dict, Any
 
 
 class ProjectManager:
@@ -59,3 +60,27 @@ class ProjectManager:
             zero_macro, macro_id,
             params.depth, params.overrun, params.feedrate
         )
+
+    def get_project_macros(self) -> List[Dict[str, Any]]:
+        """
+        Получает список макросов проекта в формате для TreeViewBuilder.
+        """
+        macros = []
+        for macro in self.kompas.get_macros():
+            try:
+                keeper = self.kompas.kompas_api7_module.IPropertyKeeper(macro)
+                name_prop = self.kompas.property_mng.GetProperty(self.kompas.doc, "Наименование")
+                type_prop = self.kompas.property_mng.GetProperty(self.kompas.doc, "Тип")
+
+                name_value = keeper.GetPropertyValue(name_prop, None, True, True)
+                type_value = keeper.GetPropertyValue(type_prop, None, True, True)
+
+                macros.append({
+                    "name": name_value[1],
+                    "type": type_value[1],
+                    "id": macro
+                })
+            except Exception as e:
+                print(f"Ошибка при получении свойств макроса: {e}")
+                continue
+        return macros

@@ -1,8 +1,6 @@
 import os
 import traceback
 
-from PyQt5.QtGui import QDoubleValidator, QIntValidator
-
 from drillingFileReader import drillingFileReader
 from dxfFileReader import DXFReader
 from pathlib import Path
@@ -10,7 +8,7 @@ from pathlib import Path
 from PyQt5.QtCore import Qt, QSettings
 from PyQt5.QtWidgets import (QMainWindow, QAction, QStatusBar, QMessageBox, QFileDialog,
                              QDialog, QVBoxLayout, QLabel, QLineEdit, QHBoxLayout, QPushButton, QTreeWidget,
-                             QTreeWidgetItem, QMenu, QComboBox)
+                             QTreeWidgetItem, QMenu)
 from kompas_service import KompasService
 
 
@@ -20,6 +18,7 @@ from ui.dialogs.border_trajectory_dialog import BorderTrajectoryDialog
 from ui.dialogs.drilling_params_dialog import DrillingParamsDialog
 from ui.dialogs.milling_params_dialog import MillingParamsDialog
 from ui.dialogs.tracks_trajectory_dialog import TracksTrajectoryDialog
+from ui.tree_view_builder import TreeViewBuilder
 
 
 class PCBEditor(QMainWindow):
@@ -97,7 +96,7 @@ class PCBEditor(QMainWindow):
 
     def delete_macro(self, item):
         self.ks_service.delete_macro(item.data(1, 0))
-        self.build_project_tree(self.project_name)
+        self.refresh_tree()
 
     def create_menus(self):
         self.create_file_menu()
@@ -161,7 +160,7 @@ class PCBEditor(QMainWindow):
         if file_path:
             self.project_name = os.path.splitext(os.path.basename(file_path))[0]
             self.ks_service.open_fragment(file_path.replace(".pcbprj", ".frw"))
-            self.build_project_tree(self.project_name)
+            self.refresh_tree()
 
             doc = self.ks_service.doc
             doc2d = self.ks_service.kompas_api7_module.IKompasDocument2D(doc)
@@ -170,7 +169,7 @@ class PCBEditor(QMainWindow):
 
             container = self.ks_service.kompas_api7_module.IDrawingContainer(views)
             print(self.ks_service.kompas_api7_module.ksDrawingObjectNotify, self.create_menus, container.MacroObjects)
-            self.ks_service.advise_kompas_event(self.ks_service.kompas_api7_module.ksDrawingObjectNotify, lambda a, b: self.build_project_tree(self.project_name), container.MacroObjects)
+            self.ks_service.advise_kompas_event(self.ks_service.kompas_api7_module.ksDrawingObjectNotify, lambda a, b: self.refresh_tree(), container.MacroObjects)
 
     def new_project(self):
         print("Создать проект")
@@ -260,7 +259,7 @@ class PCBEditor(QMainWindow):
 
 
                 self.ks_service.create_fragment(frw_path)
-                self.build_project_tree(self.project_name)
+                self.refresh_tree()
                 with open(pcbprj_path, 'w'): pass
 
                 self.statusBar.showMessage(f"Создан проект: {project_path}")
@@ -279,33 +278,24 @@ class PCBEditor(QMainWindow):
 
         dlg.exec()
 
-    def build_project_tree(self, project_name="project"):
-        print("Построение дерева проекта...")
-        self.tree_view.clear()
+    def refresh_tree(self):
+        """Обновляет дерево проекта"""
+        if not self.project_name:
+            self.tree_view.clear()
+            return
 
         try:
-            root = QTreeWidgetItem(self.tree_view)
-            root.setText(0, project_name)
-            root.setExpanded(True)
-            for macro in self.ks_service.get_macros():
-                keeper = self.ks_service.kompas_api7_module.IPropertyKeeper(macro)
-                name_prop = self.ks_service.property_mng.GetProperty(self.ks_service.doc, "Наименование")
-                object_type_prop = self.ks_service.property_mng.GetProperty(self.ks_service.doc, "Тип")
-
-                name_value = keeper.GetPropertyValue(name_prop, None, True, True)
-                object_type_value = keeper.GetPropertyValue(object_type_prop, None, True, True)
-
-                field_name = f"{name_value[1]} ({object_type_value[1]})"
-
-                macro_item = QTreeWidgetItem(root)
-                macro_item.setText(0, field_name)
-                macro_item.setData(1, 0, macro)
-
+            macros = self.project_manager.get_project_macros()
+            TreeViewBuilder.build_project_tree(
+                self.tree_view,
+                self.project_name,
+                macros
+            )
             self.create_point_action.setDisabled(False)
             self.set_action_enable()
 
         except Exception as e:
-            self.statusBar.showMessage("Произошла ошибка при создании дерева проекта")
+            self.statusBar.showMessage("Произошла ошибка при обновлении дерева проекта")
             print("Ошибка:", str(e))
             traceback.print_exc()
 
@@ -393,7 +383,7 @@ class PCBEditor(QMainWindow):
                 self.statusBar.showMessage("Произошла ошибка при добавлении отверстий")
                 print("Ошибка:", str(e))
                 traceback.print_exc()
-        self.build_project_tree(self.project_name)
+        self.refresh_tree()
 
     def show_drill_menu(self, macro_id: str):
         """Вызывается из контекстного меню для 'Отверстия'"""
@@ -472,7 +462,7 @@ class PCBEditor(QMainWindow):
 
     def create_start_point(self):
         self.ks_service.create_start_point()
-        self.build_project_tree(self.project_name)
+        self.refresh_tree()
 
     def set_action_enable(self):
         self.addHolesAction.setDisabled(False)
