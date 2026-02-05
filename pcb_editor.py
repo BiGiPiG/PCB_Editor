@@ -318,7 +318,8 @@ class PCBEditor(QMainWindow):
             self.statusBar.showMessage(f"Дорожки загружены из: {os.path.basename(file_path)}")
         except Exception as e:
             self.statusBar.showMessage(f"Ошибка загрузки: {str(e)}")
-            print(f"Ошибка при чтении файла дорожек: {e}")
+            print("Ошибка при чтении файла дорожек:")
+            traceback.print_exc()
 
     def add_mask(self):
         self.statusBar.showMessage("Режим добавления границ")

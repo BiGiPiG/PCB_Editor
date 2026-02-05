@@ -6,8 +6,8 @@ from pythoncom import VT_EMPTY
 from win32com.client import gencache, VARIANT, Dispatch
 from postprocessor import Hole, Line, Arc, Postprocessor
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QProgressDialog
-from collections import defaultdict, deque
+from PyQt5.QtWidgets import QProgressDialog, QMessageBox
+from collections import defaultdict
 from _thread import *
 import time
 
@@ -183,10 +183,10 @@ class KompasService:
             
             lineSegment = m.LineSegments.Add()
             
-            lineSegment.X1 = line.x1
-            lineSegment.Y1 = line.y1
-            lineSegment.X2 = line.x2
-            lineSegment.Y2 = line.y2
+            lineSegment.X1 = line.X1
+            lineSegment.Y1 = line.Y1
+            lineSegment.X2 = line.X2
+            lineSegment.Y2 = line.Y2
             
             lineSegment.Update()
         
