@@ -214,10 +214,10 @@ class KompasService:
             
             lineSegment = m.LineSegments.Add()
             
-            lineSegment.X1 = line.x1
-            lineSegment.Y1 = line.y1
-            lineSegment.X2 = line.x2
-            lineSegment.Y2 = line.y2
+            lineSegment.X1 = line.X1
+            lineSegment.Y1 = line.Y1
+            lineSegment.X2 = line.X2
+            lineSegment.Y2 = line.Y2
             
             lineSegment.Update()
         
