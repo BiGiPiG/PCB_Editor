@@ -14,7 +14,6 @@ import time
 class KompasService:
     def __init__(self):
         try:
-            pythoncom.CoInitializeEx(pythoncom.COINIT_MULTITHREADED)
             self.kompas = None
             self.kompas_api7_module = None
             self.kompas5 = None
@@ -173,11 +172,10 @@ class KompasService:
         
         pd = QProgressDialog("Operation in progress.", "Cancel", 0, len(lines))
         pd.setWindowModality(Qt.WindowModal)
-        
-        i = 0
-        
-        for line in lines:
-            
+
+        for i, line in enumerate(lines):
+            if pd.wasCanceled():
+                break
             pd.setValue(i)
             i+=1
             
@@ -243,11 +241,10 @@ class KompasService:
         
         pd = QProgressDialog("Operation in progress.", "Cancel", 0, len(lines))
         pd.setWindowModality(Qt.WindowModal)
-        
-        i = 0
-        
-        for line in lines:
-            
+
+        for i, line in enumerate(lines):
+            if pd.wasCanceled():
+                break
             pd.setValue(i)
             i+=1
             
@@ -302,15 +299,15 @@ class KompasService:
         keeper = self.kompas_api7_module.IPropertyKeeper(macro)
         keeper.SetPropertyValue(prop, "Отверстия", False)
         
-    def create_mask_trajectory(self, startPoint, mask, offset):
-    
-        doc = self.kompas.Documents.Add(2, False)
-        
-        tempDoc = self.kompas.Documents.Add(2, True)
-       
-        doc2d = self.kompas_api7_module.IKompasDocument2D(doc)
+    def create_mask_trajectory(self, mask, offset):
+
+        doc = None
+        tempDoc = None
 
         try:
+            doc = self.kompas.Documents.Add(2, False)
+            tempDoc = self.kompas.Documents.Add(2, True)
+            doc2d = self.kompas_api7_module.IKompasDocument2D(doc)
 
             views = self.kompas_api7_module.IKompasDocument2D(tempDoc).ViewsAndLayersManager.Views.View(0)
             container = self.kompas_api7_module.IDrawingContainer(views)
@@ -394,7 +391,7 @@ class KompasService:
                     g = g27
                     g17.Delete()
                 
-                contour.Delete();
+                contour.Delete()
                 
                 doc2d5.ksMoveObj(g.Reference, X, Y)
                 
@@ -429,10 +426,23 @@ class KompasService:
             
         except ValueError as e:
             QMessageBox.warning(None, "Ошибка построения", e)
-        
-        border = self.find_macro_by_type("Границы")
-        
-        doc.Close(0)
+
+        finally:
+            if doc:
+                try:
+                    doc.Close(False)
+                except:
+                    pass
+            if tempDoc:
+                try:
+                    tempDoc.Close(False)
+                except:
+                    pass
+
+        self.find_macro_by_type("Границы")
+
+
+
         
     def create_drilling_program(self, startPoint, points, depth, overrun, feedrate):
         
@@ -459,10 +469,9 @@ class KompasService:
             
         return Postprocessor.drilling(holes, depth, overrun, feedrate)
        
-    def create_border_trajectory(self, startPoint, border, tool_diameter, offset, contour_type):
+    def create_border_trajectory(self, border, tool_diameter, offset, contour_type):
        
         doc = self.kompas.Documents.Add(2, False)
-       
         doc2d = self.kompas_api7_module.IKompasDocument2D(doc)
 
         try:
@@ -496,7 +505,6 @@ class KompasService:
             lines = macro_container.LineSegments
             
             contours = self.split_into_contours(lines)
-            print(contours)
             for i, cont in enumerate(contours):
             
                 contour = container.DrawingContours.Add()
@@ -594,13 +602,16 @@ class KompasService:
             
         except ValueError as e:
             QMessageBox.warning(None, "Ошибка построения", e)
+        finally:
+            if doc:
+                try:
+                    doc.Close(False)
+                except:
+                    pass
         
-        doc.Close(0)
-        
-    def create_tracks_trajectory(self, startPoint, border, tool_diameter, line_count, overlap_percent):
-       
+    def create_tracks_trajectory(self, border, tool_diameter):
+
         doc = self.kompas.Documents.Add(2, False)
-       
         doc2d = self.kompas_api7_module.IKompasDocument2D(doc)
 
         try:
@@ -679,7 +690,7 @@ class KompasService:
                 
                 g271 = self.kompas_api7_module.IDrawingObject1(g27.Objects(0))
                 l2 = g271.GetCurve2D().Length
-                
+
                 g = None
                 
                 if l1 > l2:
@@ -724,84 +735,74 @@ class KompasService:
             
         except ValueError as e:
             QMessageBox.warning(None, "Ошибка построения", e)
-        
-        doc.Close(0)
-     
+        finally:
+            if doc:
+                try:
+                    doc.Close(False)
+                except:
+                    pass
+
     def create_milling_program(self, startPoint, macro, depth, overrun, feedrate):
-        
         result = self.kompas_api7_module.IMacroObject(startPoint[0]).GetPlacement()
-        
         dX = result[1]
         dY = result[2]
-        
+
         result = self.kompas_api7_module.IMacroObject(macro).GetPlacement()
-        
         dX -= result[1]
         dY -= result[2]
-        
-        contours = self.kompas_api7_module.IDrawingContainer(macro).Objects(0)
-        
-        segments = []
-        
-        ths = []
-        
-        j = 0
-        
-        for contour in contours:
-            
-            ths.append(None)
-            
-            start_new_thread(self.add_contur_segments, (contour.Reference, j, ths, self.doc.Reference, dX, dY))
-            
-            j+=1
 
-        _next = True
-        
-        while _next:
-            
-            _next = False
-            
-            for i in range(0, len(ths)):
-                if  ths[i] == None:
-                    _next = True
-            
-            time.sleep(2)
-        
-        for i in range(0, len(ths)):
-        
-            segments = segments + ths[i]
-        
-        return Postprocessor.cutTrajectory(segments, depth, overrun, feedrate, 0)
-     
-    def add_contur_segments(self, contour, j, ths, doc, dX, dY):
-        
-        kompas5 = self.kompas_api5_module.KompasObject(Dispatch("Kompas.Application.5")._oleobj_.QueryInterface(self.kompas_api5_module.KompasObject.CLSID, pythoncom.IID_IDispatch))
-        
+        contours = list(self.kompas_api7_module.IDrawingContainer(macro).Objects(0))
         segments = []
-        
-        contour = kompas5.TransferReference(contour, doc)
-        
-        contour = self.kompas_api7_module.IContour(contour)
-            
-        for i in range(0, contour.Count):
-        
-            segment = contour.Segment(i)
-        
+
+        progress = QProgressDialog("Обработка контуров...", "Отмена", 0, len(contours))
+        progress.setWindowModality(Qt.WindowModal)
+        progress.show()
+
+        for i, contour in enumerate(contours):
+            if progress.wasCanceled():
+                break
+            progress.setValue(i)
+            contour_segments = self.add_contur_segments_sync(contour, dX, dY)
+            segments.extend(contour_segments)
+
+        progress.close()
+        return Postprocessor.cutTrajectory(segments, depth, overrun, feedrate, 0)
+
+    def add_contur_segments_sync(self, contour, dX, dY):
+        """
+        Синхронно извлекает сегменты из контура.
+        """
+        segments = []
+
+        contour_obj = self.kompas_api7_module.IContour(contour)
+
+        for i in range(contour_obj.Count):
+            segment = contour_obj.Segment(i)
             segment_type = segment.Type
-        
-            if segment_type == 10707:
-                
+
+            if segment_type == 10707:  # Линия
                 line = self.kompas_api7_module.IContourLineSegment(segment)
-                
-                segments.append(Line(round(line.X1 - dX, 5), round(line.Y1 - dY, 5), round(line.X2 - dX, 5), round(line.Y2 - dY, 5)))
-                
-            elif segment_type == 10708:
-            
+                segments.append(Line(
+                    round(line.X1 - dX, 5),
+                    round(line.Y1 - dY, 5),
+                    round(line.X2 - dX, 5),
+                    round(line.Y2 - dY, 5)
+                ))
+
+            elif segment_type == 10708:  # Дуга
                 arc = self.kompas_api7_module.IContourArc(segment)
-                
-                segments.append(Arc(round(arc.X1 - dX, 5), round(arc.Y1 - dY, 5), round(arc.X2 - dX, 5), round(arc.Y2 - dY, 5), round(arc.Xc, 5), round(arc.Yc, 5), arc.Direction, round(arc.Radius, 5)))
-        
-        ths[j] = segments
+                segments.append(Arc(
+                    round(arc.X1 - dX, 5),
+                    round(arc.Y1 - dY, 5),
+                    round(arc.X2 - dX, 5),
+                    round(arc.Y2 - dY, 5),
+                    round(arc.Xc, 5),
+                    round(arc.Yc, 5),
+                    arc.Direction,
+                    round(arc.Radius, 5)
+                ))
+
+        return segments
      
     def split_into_contours(self, lines):
         """
@@ -850,7 +851,10 @@ class KompasService:
             used_lines.append(current_line)
             
             # 3. Двигаемся по контуру, пока не вернёмся в начало
-            while current_point != start_point:
+            max_iterations = len(lines) * 2
+            iteration = 0
+            while current_point != start_point and iteration < max_iterations:
+                iteration += 1
                 # Ищем следующую линию, выходящую из current_point
                 next_line = None
                 next_point = None
@@ -868,7 +872,11 @@ class KompasService:
                 contour.append(next_line)
                 used_lines.append(next_line)
                 current_point = next_point
-            
+
+            if iteration >= max_iterations:
+                print("Warning: possible open contour detected")
+                break
+
             # Только если вернулись в старт — это замкнутый контур
             if current_point == start_point:
                 contours.append(contour)
@@ -925,7 +933,7 @@ class KompasService:
 
     def find_macro_by_type(self, type):
         prop = self.property_mng.GetProperty(self.doc, "Тип")
-        doc2d = self.kompas_api7_module.IKompasDocument2D(self.kompas.ActiveDocument)
+        doc2d = self.kompas_api7_module.IKompasDocument2D(self.doc)
 
         views = doc2d.ViewsAndLayersManager.Views.View(0)
 
