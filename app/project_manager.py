@@ -32,12 +32,7 @@ class ProjectManager:
         zero_macro = self.kompas.find_macro_by_type("Ноль станка")
         if not zero_macro:
             raise RuntimeError("Не найдена начальная точка ('Ноль станка')")
-        self.kompas.create_tracks_trajectory(
-            zero_macro, macro_id,
-            params.tool_diameter,
-            params.line_count,
-            params.overlap_percent
-        )
+        self.kompas.create_tracks_trajectory(macro_id, params.tool_diameter)
 
     def create_border_trajectory(self, macro_id: str, params: BorderTrajectoryParams):
         """Создаёт траекторию границ в Kompas"""
@@ -45,7 +40,7 @@ class ProjectManager:
         if not zero_macro:
             raise RuntimeError("Не найдена начальная точка ('Ноль станка')")
         self.kompas.create_border_trajectory(
-            zero_macro, macro_id,
+            macro_id,
             params.tool_diameter,
             params.offset,
             params.contour_type.value

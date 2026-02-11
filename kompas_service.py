@@ -210,14 +210,14 @@ class KompasService:
         
         for line in lines:
             
-            lineSegment = m.LineSegments.Add()
+            line_segment = m.LineSegments.Add()
             
-            lineSegment.X1 = line.X1
-            lineSegment.Y1 = line.Y1
-            lineSegment.X2 = line.X2
-            lineSegment.Y2 = line.Y2
+            line_segment.X1 = line.X1
+            line_segment.Y1 = line.Y1
+            line_segment.X2 = line.X2
+            line_segment.Y2 = line.Y2
             
-            lineSegment.Update()
+            line_segment.Update()
         
         macro.Update()
         
@@ -444,13 +444,13 @@ class KompasService:
 
 
         
-    def create_drilling_program(self, startPoint, points, depth, overrun, feedrate):
+    def create_drilling_program(self, start_point, points, depth, overrun, feedrate):
         
         m = self.kompas_api7_module.IDrawingContainer(points)
         
         diams = m.Circles
         
-        result = self.kompas_api7_module.IMacroObject(startPoint[0]).GetPlacement()
+        result = self.kompas_api7_module.IMacroObject(start_point[0]).GetPlacement()
         
         dX = result[1]
         dY = result[2]
@@ -742,8 +742,8 @@ class KompasService:
                 except:
                     pass
 
-    def create_milling_program(self, startPoint, macro, depth, overrun, feedrate):
-        result = self.kompas_api7_module.IMacroObject(startPoint[0]).GetPlacement()
+    def create_milling_program(self, start_point, macro, depth, overrun, feedrate):
+        result = self.kompas_api7_module.IMacroObject(start_point[0]).GetPlacement()
         dX = result[1]
         dY = result[2]
 
